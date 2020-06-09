@@ -111,7 +111,7 @@ for (r in 1:nsim) {
 		indcomp = which(arrival < (arrival[i] - obswin))
 		ncomp = length(indcomp)
 		if (ncomp < n1)  {   # AR does not begin until there are n1 complete observations
-			a1[i] = rbinom(1,1,pi1)
+			a1[i] = rbinom(1,1,pi1)  # pi1(initial random allocation prob) = 0.67 as determined from CODIACs
 			if (a1[i]==0)  R[i] = rbinom(1,1,p0)
 			else R[i] = rbinom(1,1,p1)
 			if (a1[i]==0 & R[i]==0) a2[i] = rbinom(1,1,pi2[1])
