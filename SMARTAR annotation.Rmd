@@ -110,7 +110,7 @@ p0 = 29/56
 p1 = 28/52
 ```
 
-> The intermediate responses (R) were generated as Bernoulli with Pr(R = 1|A1 = 0) = 0.52 and Pr(R = 1|A1 = 1) = 0.54 based on the results in CODIACS. In each simulated trial, inter-enrollment times were simulated according to a Poisson process with a rate of four patients per month based on our clinical expectation.
+The intermediate responses $R(i)$ were generated as Bernoulli with $Pr(R = 1 | A_1 = 0) = 0.52$ and $Pr(R = 1 | A_1 = 1) = 0.54$ based on the results in CODIACS. In each simulated trial, inter-enrollment times were simulated according to a Poisson process with a rate of four patients per month based on our clinical expectation.
 
 ```{r}
 # iterated over n patients
