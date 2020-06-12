@@ -37,6 +37,8 @@ The motivation for the use of adaptive randomisation in the context of SMART is 
 ### Methods
 ```{r, results='hide'}
 source('SMARTAR sim.R') # load simulation provided by authors
+library(knitr)
+library(png)
 ```
 
 #### Q-learning
@@ -61,22 +63,24 @@ Because the optimal DTR, $d_{t}^{*}(h_{t}) \in S_{t}$, is intractable, we estima
 
 * $\hat{\theta}_2 = arg min_\theta \sum_{i=1}^{n} (Y_i - Q_2(H_{2i}, A_{2i}; \theta))^2$
 
-For Q1 we define a pseudo-outcome as a proxy for the expectation defined and estimate the parameters using least squares for the pseudo-outcome.
+For Q1 we define a pseudo-outcome $\hat{Y}_i$ as a proxy for the expectation defined and estimate the parameters using least squares for the pseudo-outcome.
 
-* $\hat{Y}_i = max_{a2 \in s2} Q2(H_{2i}, a_2; \theta^2)$
+* $\hat{Y}_i = max_{a2 \in s2} Q2(H_{2i}, a_2; \hat{\theta}_2)$
 
 * $\hat{\theta}_1 = arg min_\theta \sum_{i=1}^{n} (\hat{Y}_i - Q_1(H_{1i}, A_{1i}; \theta))^2$
 
 
 ```{r}
-# pseudo-outcome
-Q2max = function(a1,resp,b0,b1,b2,b3,g1,g2,g3) {
+# pseudo-outcome, return largest Q2 given possible action space
+Q2max = function(a1,resp,b0,b1,b2,b3,g1,g2,g3) {  # resp = binary variable, intermediate outcome to a1
   Q20 = Q2(a1,resp,0,b0,b1,b2,b3,g1,g2,g3)
   Q21 = Q2(a1,resp,1,b0,b1,b2,b3,g1,g2,g3)
   if (Q20 >= Q21)  return( c(0,Q20) )
   else { return( c(1,Q21) ) }
 }
-Q1 = function(a1,b0,b1,b2,b3,g1,g2,g3,p) {  # not used in Qlearn because p = response rate under a1 is not available
+# p = probability of responding to treatment a1 (i.e. P[resp = 1 | Ai = a1])
+# not used in fitting Q-function
+Q1 = function(a1,b0,b1,b2,b3,g1,g2,g3,p) {
   val = (1-p)*Q2max(a1,0, b0,b1,b2,b3,g1,g2,g3)[2] + p*Q2max(a1,1,b0,b1,b2,b3,g1,g2,g3)[2]
   return(val)
 }
@@ -84,15 +88,15 @@ Q1 = function(a1,b0,b1,b2,b3,g1,g2,g3,p) {  # not used in Qlearn because p = res
 
 
 #### SMART with adaptive randomisation
-Let $n(i)$ denote the number of patients with the final outcome evaluated just prior to enrollment of patient i (likely n(i) < i-1 as patients enroll in a staggered fashion). Let $N_{min}$ be a pre-specified number of patients, where the allocation probability is a pre-specified $\pi_t^0(a \mid h_{ti})$ for all patients where $n(i) < N_{min}$.
+Let $n(i)$ denote the number of patients with the final outcome evaluated just prior to enrollment of patient i (likely n(i) < i-1 as patients enroll in a staggered fashion). Let $N_{min}$ be a pre-specified number of patients, where the allocation probability is a pre-specified and static value, $\pi_t^0(a \mid h_{ti})$, for all patients where $n(i) < N_{min}$.
 
-The authors define the adaptive randomisation policy $\hat{\pi}_t(a \mid h_{ti})$ as:
+The authors define the adaptive randomisation policy $\hat{\pi}_t(a \mid h_{ti})$ for $n(i) \geq N_{min}$ as:
 
 * $\hat{\pi}_t(a \mid h_{ti}) = \frac{\hat{\rho}(a \mid h_{ti})}{\sum_{a \in s_t}\hat{\rho}(a \mid h_{ti})}$
 * where $\hat{\rho}(a \mid h_{ti}) = \exp(\frac{Q_t(h_t,a_t; \hat{\theta}_t)}{\hat{\sigma}_t}log(b))$ and $\hat{\sigma}_t^2 = \frac{\sum_{k=1}^{n(i)}{(\hat{Y}_k} - Q_t(h_{tk},a_{tk}; \hat{\theta}_t))^2}{n(i) - dim(\theta_t)}$
 * $dim(\theta)$ denotes the dimension of the vector $\theta$ and pre-specified base b ≥ 1 represents how "greedy" the AR scheme is.
 
-The authors also integrate historical context by using a weighted average of $\pi_t^0$ and $\hat{\pi}_t$ using hyperparameter $\lambda \in [0,1]$ which decreases as $n(i)$ grows. Thus, the historical $\pi_t^0$ influences the randomization probabilities even after AR is in effect, although its contribution goes to zero as n increases when b > 1.
+The authors also integrate historical context by using a weighted average of $\pi_t^0$ and $\hat{\pi}_t$ using hyperparameter $\lambda \in [0,1]$ which decreases as $n(i)$ grows. Thus, the historical $\pi_t^0$ influences the randomization probabilities even after AR is in effect, although its contribution goes to zero as $n(i)$ increases when b > 1.
 
 * $\tilde{\rho}_t = exp((\lambda^{b-1})\pi_t^0 + (1- \lambda^{b-1})\hat{\pi}_t)$
 * $\lambda_n = \tau^{1/(b-1)}N_{min}/n$
@@ -179,37 +183,57 @@ The hyperparameters used for tuning the defined SMART-AR approach are:
 #### Analysis of historical data: specification of $\pi_t^0$
 The authors set up the initial randomization probabilities $\pi_0^t$ in the SMART-AR using the data of CODIACS, in which information about $(Ati, Ri, Yi)$ is available in 108 subjects with 56 receiving no PST and 52 receiving PST at baseline. Let $R_i$ denote successful treatment outcome (i.e. decreased severity on depression questionnaire) at intermediate evaluation. *Only 71 patients tested positive from the screening in intervention group 1 (screen, notify, treat). Therefore the data must include those that were allocated to group 2 (screen, notify) but received treatment based on the primary clinician's discretion.*
 
+* $Q_2(h_{2i},a_{2i}; \theta_2) = \beta_0 + \beta_1a_{1i} + \beta_2a_{2i} + \beta_3a_{1i}a_{2i} + \gamma_1r_i + \gamma_2r_i(1-a_{1i})a_{2i} + \gamma_3r_ia_{1i}(1-a_{2i})$
+
+The Q-function $Q_2(h_{2i},a_{2i}; \theta_2)$ is parameterized so that a negative value of $\gamma_2$ and $\gamma_3$ will support play-the-winner respectively for medication and PST as initial treatment. The $(1-a_i)$ forces $a_1 = a_2$ to maximize the Q-value when $\gamma < 0$. This is used for comparing various design strategies in the next section. $Q_1$ is fitted with a simple linear modelling with the pseudo-outcome defined by $Q_2(max)$.
+
+* $Q_1(h_{1i}, a_{1i}; \theta_1) = \alpha_0 + \alpha_1a_{1i}$
+
 ```{r}
 # Apply Q-learning to the data for STAGE 2
-Q2 = function(a1,resp,a2,b0,b1,b2,b3,g1,g2,g3) {
+Q2 = function(a1,resp,a2,b0,b1,b2,b3,g1,g2,g3) {  # resp = binary variable, intermediate outcome to a1
   b0 + b1*a1 + b2*a2 + b3*a1*a2 + g1*resp + g2*resp*(1-a1)*a2 + g3*resp*a1*(1-a2)
 }
+```
 
-# theta value for optimal (saturated) scenario given CODIACS data
-Theta1 = c(2.206, 5.594, 8.294, 7.745, -12.102, -6.455, -13.045, 19.5)
+#### Summary of Q-learning of the CODIACS data
 
+The probabilities $\hat{\pi}^{CODIACS}_t$ are calculated with b = 2, and are used as historical randomization probabilities π0t in the SMART-AR for the depression treatment program. Mean squared errors due to $\hat{\theta}_t$ are $\hat{\sigma}^2_1 = 24.6$ and $\hat{\sigma}^2_2 = 45.2$.
+
+```{r echo=FALSE, out.width = "50%", fig.align="center"}
+img1_path <- "figures/Q-learning_summary.png"
+img1 <- readPNG(img1_path, native = TRUE)
+include_graphics(img1_path)
+```
+
+In other words, the optimal sequence is non-dynamic in that it starts with PST and switches to medication regardless of the intermediate response. It is instructive to also look at the results for patients starting with medication $(a1i = 0)$: the optimal follow-up decision in stage 2 will be switching to PST for patients who do not respond $(ri = 0)$ and staying on medication for those who do $(ri = 1)$. This analysis supports playing the winner for medication as the initial treatment.
+
+The authors also perform analysis with a saturated Q-function defined as below to test the robustness of the analysis. Note the ordering of coefficients for $\gamma_2r_ia_{2i}$ and $\gamma_3r_ia_{1i}$, and that it reduces to $Q_2$ defined above when $\gamma_4 = -(\gamma_2 + \gamma_3)$.
+
+* $Q_2^{Sat}(h_{2i},a_{2i}; \theta_2) = \beta_0 + \beta_1a_{1i} + \beta_2a_{2i} + \beta_3a_{1i}a_{2i} + \gamma_1r_i + \gamma_2r_ia_{2i} + \gamma_3r_ia_{1i} + \gamma_4r_ia_{1i}a_{2i}$
+
+Applying Q-learning with $Q_2^{Sat}$ resulted in the same optimal sequence (dˆ1 = 1, dˆ2 = 0) as that with $Q_2^{Sat}$; this was equivalent to choosing the strategy with maximum marginal means. Also, the Q-functions are estimated with very similar values with $\hat{Q}_1(0) = 10.7$ and $\hat{Q}_1(1) = 15.4$. It indicates that the parameterization of $Q_2$ is adequate, while slightly more parsimonious than $Q_2^{Sat}$.
+
+```{r}
 # Q-learning for STAGE 2 under saturated conditions
-Q2sat = function(a1,resp,a2, theta0 = Theta3) {
+Q2sat = function(a1,resp,a2, theta0) {
   dim(theta0) = c(8,1)
   x = cbind(1, a1, a2, resp, a1*a2, a1*resp, a2*resp, a1*a2*resp)
   return( x %*% theta0)
 }
 
-# Regression parameters of saturated model:
-print(thetaprn)
-# All possible DTRs and their values
+# All possible DTRs and their values, V0 defined in sim.R
 print(V0,digits=3)
 ```
 
-#### Design callibration
-Experimentation to find optimal design parameters discussed above. The optimal parameters were found to be $b = 10, N_{min} = 30, and \tau = 0.75$.
 
-Parameter values for $Q^{sat}_2(h_{2i},a_{2i})$ used in simulation, and the corresponding optimal d* and worst dw. Scenarios 1–4, under which $Q_2(h_{2i},a_{2i}; \theta_2)$ is correct, are used as calibration scenarios for the SMART-AR design. The analysis model (4) is misspecified under Scenarios 5 and 6.
+#### Design callibration
+Experimentation to find optimal design parameters discussed above. The optimal parameters were found to be $b = 10$, $N_{min} = 30$, and $\tau = 0.75$. Parameter values for $Q^{sat}_2(h_{2i},a_{2i})$ used in simulation, and the corresponding optimal d* and worst dw. Scenarios 1–4, under which $Q_2(h_{2i},a_{2i}; \theta_2)$ is correct, are used as calibration scenarios for the SMART-AR design. The analysis model (4) is misspecified under Scenarios 5 and 6.
 
 ### Design Comparison
 Simulations were performed to compare the following scenarios:
 
-* SMART-AR(opt): optimal allocation strategy with $b = 10, N_{min} = 30, and \tau = 0.75$
+* SMART-AR(opt): optimal allocation strategy with $b = 10$, $N_{min} = 30$, and $\tau = 0.75$
 * SMART-AR(1): non-adaptive strategy based on CODIACS initial probability with $b = 1, \hat{\pi} = \pi^0$
 * SMART-B: non-adaptive strategy with equal allocation $\pi_t = 1/J_t$
 * SMART-PTW: non-adaptive  strategy with play-the-winner, where patients responding to A1 will continue on A2 = A1

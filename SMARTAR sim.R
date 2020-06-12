@@ -30,7 +30,7 @@ Theta5 = c(1.320, 6.480, 9.180, 9.555, -11.822, 4.645, -14.855, 6.382)    # Scen
 Theta6 = c(2.206, 5.594, 8.294, 7.745, -12.102, -6.455, -13.045, -19.5)    # Scene 6 (modified scene 3)
 
 
-theta = Theta3
+theta = Theta5
 
 
 Q2sat = function(a1,resp,a2, theta0 = theta) {
@@ -93,7 +93,7 @@ obswin = 6  # observations will become available at calendar time (arrival + obs
 
 
 set.seed(0202)
-nsim = 5
+nsim = 2
 DTRg = DTRhat = matrix(rep(NA,nsim*3),nrow=nsim)
 valg = val = rep(NA,nsim)
 Y = matrix(rep(NA,nsim*n),nrow=nsim)
@@ -111,7 +111,7 @@ for (r in 1:nsim) {
 		indcomp = which(arrival < (arrival[i] - obswin))
 		ncomp = length(indcomp)
 		if (ncomp < n1)  {   # AR does not begin until there are n1 complete observations
-			a1[i] = rbinom(1,1,pi1)  # pi1(initial random allocation prob) = 0.67 as determined from CODIACs
+			a1[i] = rbinom(1,1,pi1)
 			if (a1[i]==0)  R[i] = rbinom(1,1,p0)
 			else R[i] = rbinom(1,1,p1)
 			if (a1[i]==0 & R[i]==0) a2[i] = rbinom(1,1,pi2[1])
