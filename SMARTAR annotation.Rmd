@@ -273,7 +273,6 @@ Author comments on result:
 
 (4) To further examine using balanced randomization as an initial randomization scheme in a SMART-AR, we ran simulation of SMART-AR(opt) using the initial randomization probabilities $\pi^0_t = 1/J_t$. Figure 3 shows that AR is able to correct for a poor choice of the initial probabilities.
 
-(5)
 
 $~$
 ```{r echo=FALSE, out.width = "80%", fig.align="center"}
@@ -283,9 +282,22 @@ include_graphics(img1_path)
 
 **Figure 3:** Program performance (average BDI reduction) of SMART-AR with different initial randomization probabilities. The SMART-AR is applied with b = 10, Nmin = 30, and τ = 0.75 under an accrual rate 4 per month. The non-adaptive SMART-AR1 is indicated by ‘o’, SMART-B by ‘+’, SMART-PTW by ‘p’, and SMART-PTWm by ‘m’. The dark solid line on top of each figure corresponds to the performance of the true optimal non-randomized DTR d*.
 
+```{r echo=FALSE, out.width = "50%", fig.align="center"}
+img1_path <- "figures/Results_3.png"
+include_graphics(img1_path)
+```
+**Figure 4:** Properties of dˆ under SMART-B, SMART-AR1, and SMART-ARopt using analysis models (4) and (5) under different patient accrual rates.
 
+$~$
+
+(5) Under SMART-PTW(m), the parameter $\gamma_2$ is not estimable because $R(1 − A_1)A_2$ is completely confounded by the main effects A1, R, and A2; thus, there is no Q-learning results for this design (and SMART-PT(W) for the same reason).
+
+(6) SMART-AR(opt), SMART-AR(1), and SMART-B have similar accuracy in terms of the probability of $\hat{d}$ correctly estimating $d^*$ and the adjusted value $E\big\{AV(\hat{d})\big\}$. On the other hand, SMART-AR(opt) yields more efficient estimator $\hat{d}$ with smaller variability in its value than SMART-B. At first glance, it may not appear to be feasible, because balanced randomization maximizes comparative power between two treatment sequences. However, since our goal is not to compare all possible sequences, but rather identify the optimal one among the good ones, AR allocates resources to the promising sequences thus maximizing the resolution of the relevant comparisons. This simulation shows that by incorporating AR to SMART, it does not only allow learning, but also improves learning upon the non-adaptive designs.
+
+(7) Figure 4(b) shows the Q-learning results using the saturated model (5), which in effect is nonparametric. In most scenarios, using model (4) yields smaller var{AV(dˆ)} than (5), even at times when (4) is incorrect; cf. Scenario 5. In Scenario 6, the nonparametric analysis is advantageous in terms of the probability of correctly estimating d*. Its advantage is less pronounced in terms of E{AV(dˆ)}, as Q-learning using model (4) often leads to selecting the second best DTR, which is not far worse than d*.
 
 ### Discussion
+
 
 
 ### Extending SMART-AR
