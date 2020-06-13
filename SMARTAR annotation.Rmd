@@ -35,7 +35,7 @@ The motivation for the use of adaptive randomisation in the context of SMART is 
 **Results:** Only 71 of 1000 eligible survivors of ACS (treatment group 1&2, 7.1%) had elevated scores indicating depressive symptoms at screening. No differences in mean (SD) change in quality-adjusted life-years or cumulative mean (SD) depression-free days. Harms including death, bleeding, or sleep difficulties did not differ among groups.
 
 ### Methods
-```{r, results='hide'}
+```{r, echo=FALSE, results='hide'}
 source('SMARTAR sim.R') # load simulation provided by authors
 library(knitr)
 library(png)
@@ -90,11 +90,17 @@ Q1 = function(a1,b0,b1,b2,b3,g1,g2,g3,p) {
 #### SMART with adaptive randomisation
 Let $n(i)$ denote the number of patients with the final outcome evaluated just prior to enrollment of patient i (likely n(i) < i-1 as patients enroll in a staggered fashion). Let $N_{min}$ be a pre-specified number of patients, where the allocation probability is a pre-specified and static value, $\pi_t^0(a \mid h_{ti})$, for all patients where $n(i) < N_{min}$.
 
+* $\hat{\rho}(a \mid h_{ti}) = \exp(\frac{Q_t(h_t,a_t; \hat{\theta}_t)}{\hat{\sigma}_t}log(b))$ and $\hat{\sigma}_t^2 = \frac{\sum_{k=1}^{n(i)}{(\hat{Y}_k} - Q_t(h_{tk},a_{tk}; \hat{\theta}_t))^2}{n(i) - dim(\theta_t)}$
+
 The authors define the adaptive randomisation policy $\hat{\pi}_t(a \mid h_{ti})$ for $n(i) \geq N_{min}$ as:
 
-* $\hat{\pi}_t(a \mid h_{ti}) = \frac{\hat{\rho}(a \mid h_{ti})}{\sum_{a \in s_t}\hat{\rho}(a \mid h_{ti})}$
-* where $\hat{\rho}(a \mid h_{ti}) = \exp(\frac{Q_t(h_t,a_t; \hat{\theta}_t)}{\hat{\sigma}_t}log(b))$ and $\hat{\sigma}_t^2 = \frac{\sum_{k=1}^{n(i)}{(\hat{Y}_k} - Q_t(h_{tk},a_{tk}; \hat{\theta}_t))^2}{n(i) - dim(\theta_t)}$
+* $\hat{\pi}_t(a \mid h_{ti}) = \frac{\hat{\rho}(a \mid h_{ti})}{\sum_{a \in s_t}\hat{\rho}(a \mid h_{ti})} = \frac{exp( \widehat{\triangle}_{ti}(a)log(b))}{ \sum_{a' \in S_t}exp(\widehat{\triangle}_{ti}(a')log(b))}$
+* where $\widehat{\triangle}_{ti}(a) = \big\{Q_t(h_t,a_t; \theta_t) - Q_t(h_t,\hat{a}^W_t; \theta_t)\big\} / \hat{\sigma}_t$ and $\hat{a}^W_t$ is the estimated worst action given $h_{ti}$
 * $dim(\theta)$ denotes the dimension of the vector $\theta$ and pre-specified base b ≥ 1 represents how "greedy" the AR scheme is.
+
+*The full meaning of the following quote from the manuscript is unclear to me...*
+
+> Heuristically, we may view Δˆti(a) as an empirical version of the effect size Δti(a) = {Qt(hti, a) − Qt(hti, aw)}/σt between a and aw, where σt is the standard deviation of the (pseudo-)outcome and aw is the worst action based on the true Q-function; hence πˆt is expected to be close to (2) with Δˆti(a) replaced by Δti(a). For example, when there are two possible actions St = {a, aw}, under a moderate effect size Δti(a) = 0.5 per Cohen (1988), the empirical πˆt(a|hti) approximates b‾√/(1+b‾√), which equals 0.59 when b = 2, and 0.91 when b = 100. In this example, setting b from 2 to 100 seems to span a reasonably wide range of “greediness” for a moderate effect size.
 
 The authors also integrate historical context by using a weighted average of $\pi_t^0$ and $\hat{\pi}_t$ using hyperparameter $\lambda \in [0,1]$ which decreases as $n(i)$ grows. Thus, the historical $\pi_t^0$ influences the randomization probabilities even after AR is in effect, although its contribution goes to zero as $n(i)$ increases when b > 1.
 
@@ -198,11 +204,10 @@ Q2 = function(a1,resp,a2,b0,b1,b2,b3,g1,g2,g3) {  # resp = binary variable, inte
 
 #### Summary of Q-learning of the CODIACS data
 
-The probabilities $\hat{\pi}^{CODIACS}_t$ are calculated with b = 2, and are used as historical randomization probabilities π0t in the SMART-AR for the depression treatment program. Mean squared errors due to $\hat{\theta}_t$ are $\hat{\sigma}^2_1 = 24.6$ and $\hat{\sigma}^2_2 = 45.2$.
+The probabilities $\hat{\pi}^{CODIACS}_t$ are calculated with b = 2, and are used as historical randomization probabilities $\pi_t^0$ in the SMART-AR for the depression treatment program. Mean squared errors due to $\hat{\theta}_t$ are $\hat{\sigma}^2_1 = 24.6$ and $\hat{\sigma}^2_2 = 45.2$.
 
 ```{r echo=FALSE, out.width = "50%", fig.align="center"}
 img1_path <- "figures/Q-learning_summary.png"
-img1 <- readPNG(img1_path, native = TRUE)
 include_graphics(img1_path)
 ```
 
@@ -212,7 +217,7 @@ The authors also perform analysis with a saturated Q-function defined as below t
 
 * $Q_2^{Sat}(h_{2i},a_{2i}; \theta_2) = \beta_0 + \beta_1a_{1i} + \beta_2a_{2i} + \beta_3a_{1i}a_{2i} + \gamma_1r_i + \gamma_2r_ia_{2i} + \gamma_3r_ia_{1i} + \gamma_4r_ia_{1i}a_{2i}$
 
-Applying Q-learning with $Q_2^{Sat}$ resulted in the same optimal sequence (dˆ1 = 1, dˆ2 = 0) as that with $Q_2^{Sat}$; this was equivalent to choosing the strategy with maximum marginal means. Also, the Q-functions are estimated with very similar values with $\hat{Q}_1(0) = 10.7$ and $\hat{Q}_1(1) = 15.4$. It indicates that the parameterization of $Q_2$ is adequate, while slightly more parsimonious than $Q_2^{Sat}$.
+Applying Q-learning with $Q_2^{Sat}$ resulted in the same optimal sequence (d1 = 1, d2 = 0) as that with $Q_2^{Sat}$; this was equivalent to choosing the strategy with maximum marginal means. Also, the Q-functions are estimated with very similar values with $\hat{Q}_1(0) = 10.7$ and $\hat{Q}_1(1) = 15.4$. It indicates that the parameterization of $Q_2$ is adequate, while slightly more parsimonious than $Q_2^{Sat}$.
 
 ```{r}
 # Q-learning for STAGE 2 under saturated conditions
@@ -222,16 +227,27 @@ Q2sat = function(a1,resp,a2, theta0) {
   return( x %*% theta0)
 }
 
-# All possible DTRs and their values, V0 defined in sim.R
+# All possible DTRs and their values under saturated Q-learning equation, V0 defined in sim.R
 print(V0,digits=3)
 ```
 
 
 #### Design callibration
-Experimentation to find optimal design parameters discussed above. The optimal parameters were found to be $b = 10$, $N_{min} = 30$, and $\tau = 0.75$. Parameter values for $Q^{sat}_2(h_{2i},a_{2i})$ used in simulation, and the corresponding optimal d* and worst dw. Scenarios 1–4, under which $Q_2(h_{2i},a_{2i}; \theta_2)$ is correct, are used as calibration scenarios for the SMART-AR design. The analysis model (4) is misspecified under Scenarios 5 and 6.
+The authors defined "average performance" as follows to evaluate the performance under various hyperparameter settings.
+
+* $AV(\hat{d}) = \frac{V(\hat{d}) - V(d^W)}{V(d^*) - V(d^W)}$
+* $APO_{100} = \frac{\bar{Y}_{100} - V(d^W)}{V(d^*) - V(d^W)}$, where $\bar{Y}_{100}$ is mean treatment outcome (i.e. BDI score reduction) of the first 100 patients.
+
+$E\big\{AV(\hat{d})\big\}$ and $var\big\{AV(\hat{d})\big\}$ was calculated based on 1000 simulation replicates for 6 different scenarios, where the $\hat{Q}_t$ parameters were fitted as seen in the table below. The optimal parameters were found to be $b = 10$, $N_{min} = 30$, and $\tau = 0.75$.
+
+```{r echo=FALSE, out.width = "50%", fig.align="center"}
+img1_path <- "figures/Hyperparameter_fitting_scenarios.png"
+include_graphics(img1_path)
+```
+
 
 ### Design Comparison
-Simulations were performed to compare the following scenarios:
+Simulations were performed to compare the following designs:
 
 * SMART-AR(opt): optimal allocation strategy with $b = 10$, $N_{min} = 30$, and $\tau = 0.75$
 * SMART-AR(1): non-adaptive strategy based on CODIACS initial probability with $b = 1, \hat{\pi} = \pi^0$
@@ -239,8 +255,46 @@ Simulations were performed to compare the following scenarios:
 * SMART-PTW: non-adaptive  strategy with play-the-winner, where patients responding to A1 will continue on A2 = A1
 * sMART-PTW(m): play-the-winner for medication only, and $\pi_t = 1/J_t$ otherwise.
 
+$~$
+```{r echo=FALSE, out.width = "80%", fig.align="center"}
+img1_path <- "figures/Results_1.png"
+include_graphics(img1_path)
+```
+
+**Figure 2:** Program performance (average BDI reduction) of SMART-AR under various accrual rates. The SMART-AR(opt) is applied with b = 10, Nmin = 30, and τ = 0.75. The non-adaptive SMART-AR(1) is indicated by ‘o’, SMART-B by ‘+’, SMART-PTW by ‘p’, and SMART-PTW(m) by ‘m’. The dark solid line on top of each figure corresponds to the performance of the true optimal non-randomized DTR $d^*$.
+
+Author comments on result:
+
+(1) Generally, the expected patient outcome improves over time under SMART-AR(opt) in all scenarios, but remains constant throughout a non-adaptive SMART. Since faster patient accrual implies more patients will be enrolled before adaptation comes into effect, it leads to delayed improvement of SMART-AR(opt).
+
+(2) The true parameter values are chosen based on regression analysis using the CODIACS data. Therefore, SMART-AR(1), which operates under a fitted $\pi^0_t$ is expected to perform well when compared to other non-adaptive SMART designs.
+
+(3) In Scenarios 3 and 4 (where by design the optimal DTR is a play-the-winner strategy), play-the-winner tends to produce better BDI reduction than the other non-adaptive programs. However, SMART-AR(opt) is able to compensate the initial deficit and surpasses SMART-PTW by the 100th enrollees even under an accrual rate that doubles our original expectation.
+
+(4) To further examine using balanced randomization as an initial randomization scheme in a SMART-AR, we ran simulation of SMART-AR(opt) using the initial randomization probabilities $\pi^0_t = 1/J_t$. Figure 3 shows that AR is able to correct for a poor choice of the initial probabilities.
+
+(5)
+
+$~$
+```{r echo=FALSE, out.width = "80%", fig.align="center"}
+img1_path <- "figures/Results_2.png"
+include_graphics(img1_path)
+```
+
+**Figure 3:** Program performance (average BDI reduction) of SMART-AR with different initial randomization probabilities. The SMART-AR is applied with b = 10, Nmin = 30, and τ = 0.75 under an accrual rate 4 per month. The non-adaptive SMART-AR1 is indicated by ‘o’, SMART-B by ‘+’, SMART-PTW by ‘p’, and SMART-PTWm by ‘m’. The dark solid line on top of each figure corresponds to the performance of the true optimal non-randomized DTR d*.
+
+
+
 ### Discussion
 
+
+### Extending SMART-AR
+
+#### Proposal 1: Statistical power analysis
+The goal of a SMART design is to identify the optimal DTR. Hence the statistical power for the hypothesis can by defined as $1 - \beta_k$ where $k = a_1, (a_2 \mid r = 0), (a_2 \mid r = 1)$. We look at the chance of mis-identifying the components of the DTR separately. We can also look at the overall statistical power where $\beta$ is defined as the type 2 error for the complete DTR.
+
+#### Proposal 2: Multi-armed extension with control protection
+We can extend the statistical power & $APO_{100}$ analysis in the case of a larger action space. To start simply, we can look at a 2 stage multi-armed SMART trial with a binary interim analysis result. Each stage can have action spaces with size $m$ and $n$.
 
 ### Reference
 Cheung, Ying Kuen, Bibhas Chakraborty, and Karina W. Davidson. "Sequential multiple assignment randomized trial (SMART) with adaptive randomization for quality improvement in depression treatment program." Biometrics 71.2 (2015): 450-459.
