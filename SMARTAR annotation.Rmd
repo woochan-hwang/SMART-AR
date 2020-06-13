@@ -298,7 +298,13 @@ $~$
 
 ### Discussion
 
+(1) Design enrichment needs to be coupled with a larger model for the Q-function. Generally, with C response categories in a two-stage DTR, $dim(θ_2)$ is of the order $J_1 × C × J_2$: the actual number of parameters depends on how many interaction terms are postulated, while it is important to include interactions in the search of optimal DTR. Therefore, when a program starts and data are few, it is necessary to consider “simple” designs. As enrollment grows, one can enrich the design to account for more information by incorporating interaction effects with patient covariates, refining and increasing treatment options such as different classes of medications, redefining the intermediate response, and adopting more than two stages of treatments. The proposed AR scheme accommodates such enrichment to the extent that Q-learning is feasible given the sample size.
 
+(2) We have demonstrated in our simulation study that the use of AR improves the performance and robustness of Q-learning by allocating patients away from treatment sequences that are not promising. Similar observations have been noted for adaptive procedures for selection among multiple non-dynamic treatments (e.g. Cheung, 2008). In the context of DTRs, due to the curse of dimensionality, this advantage offered by AR is potentially enormous.
+
+(3) Since the weighted average combines the historical and the empirical inputs on the probability scale, it can be easily applied with other empirical randomization scheme. For example, the empirical component may be replaced with an ∈-optimal criterion as in Lee et al. (2014), who adopt a Bayesian approach and estimate the Q-function using full likelihood.
+
+(4) A SMART-AR converges to a non-adaptive SMART, as more patients are enrolled before adaptation begins. The non-adaptive SMART can thus be used to provide a lower bound of performance for SMART-AR. This underlines the crucial role of historical input $\pi^0_t$. This point should be read in light of the nature of implementation research, in which the SMART-AR is used as a dissemination tool to deploy existing treatments to a community.
 
 ### Extending SMART-AR
 
