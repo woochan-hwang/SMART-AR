@@ -309,29 +309,6 @@ $~$
 
 (4) A SMART-AR converges to a non-adaptive SMART, as more patients are enrolled before adaptation begins. The non-adaptive SMART can thus be used to provide a lower bound of performance for SMART-AR. This underlines the crucial role of historical input $\pi^0_t$. This point should be read in light of the nature of implementation research, in which the SMART-AR is used as a dissemination tool to deploy existing treatments to a community.
 
-### Extending SMART-AR
-
-#### General comments (noting underdeveloped thoughts)
-This paper proposes a clinical trial design where the goal is to identify the optimal DTR. Previous attempts of integrating reinforcement learning methods in personalised healthcare [Raghu 2017] is also driven by the same motivation. The key distinction of the two approaches seems to be in the incorporation of 'randomisation' in the process of discovering the optimal DTR. I believe this intervention component is key to arriving at causal conclusions, albeit at extensive resource costs, and needs to be considered when proposing personalised treatment recommendation algorithms. Where a clinical trial is feasible, SMART with adaptive randomisation may alleviate some of the practical limitations of large (state,action) space problems. On the other hand, if we have to rely on observational datasets, defining the 'target trial' [Hernan 2016] to resemble a SMART design may be more appropriate that a non-sequential design.
-
-
-#### Proposal 1: Statistical power analysis under different adaptation strategies.
-The existing SMART-AR framework allows for a very flexible adaptation strategy from the perspective of when and how aggressive the adaptation should be. However, it is limited to a patient-benefit focused myopic RAR strategy. We can analyse other classes such as power focused or non-myopic RAR algorithms and propose an analysis of operating characteristics under the SMART framework.
-
-#### Proposal 2: Multi-armed extension with control protection
-We can extend the statistical power & $APO_{100}$ analysis in the case of a larger action space. To start simply, we can look at a 2 stage multi-armed SMART trial with a binary interim analysis result. Each stage can have action spaces with size $m$ and $n$. Other assumptions to consider would be the use of prior data to define $\pi^0_t$, which may be feasible or even realistic in a development scenario where a small amount of pilot trial data may be available prior to formal hypothesis testing.
-
-The goal of the trial may also need to be reconsidered. In the binary scenario, the authors mention that "our goal is not to compare all possible sequences, but rather identify the optimal one among the good ones". However, a multi-armed SMART may be useful when simultaneously testing multiple new candidate components to an existing DTR. In this case, one may wish to know the relative performance and not simply the most optimal sequence.
-
-#### Meeting notes
-
-1. Start with simple reimplementation of code, with formal notion of statistical power.
-2. Consider expanding to 3rd treatment arm for a1 and a2 where we can base the outcomes on the provided Q2sat parameter space
-3. Ideally the RAR should not require so much tuning, but check empirically how sensitive the outcome may be to the tuning parameters. Especially under time-varying distributions.
-4. Formulate a simplified (less tuning required) version of RAR. Read constrained randomised DP paper (~intuitively similar to epsilon greedy, check reference in SMART-AR discussion to epsilon-sequence).
-5. Historical $\pi$ could be analysed independently from the rest of the work. Also effect of mis-identification of historical $\pi$ and the effect or how to adapt to a mis-identified historical data may be of interest.
-6. ?covariate adaptive randomisation using binary response variable... modelling interaction between action sequence.
-
 
 ### Reference
 Cheung, Ying Kuen, Bibhas Chakraborty, and Karina W. Davidson. "Sequential multiple assignment randomized trial (SMART) with adaptive randomization for quality improvement in depression treatment program." Biometrics 71.2 (2015): 450-459.
