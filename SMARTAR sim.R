@@ -30,7 +30,7 @@ Theta5 = c(1.320, 6.480, 9.180, 9.555, -11.822, 4.645, -14.855, 6.382)    # Scen
 Theta6 = c(2.206, 5.594, 8.294, 7.745, -12.102, -6.455, -13.045, -19.5)    # Scene 6 (modified scene 3)
 
 
-theta = Theta5
+theta = Theta1
 
 
 Q2sat = function(a1,resp,a2, theta0 = theta) {
@@ -93,7 +93,7 @@ obswin = 6  # observations will become available at calendar time (arrival + obs
 
 
 set.seed(0202)
-nsim = 2
+nsim = 5
 DTRg = DTRhat = matrix(rep(NA,nsim*3),nrow=nsim)
 valg = val = rep(NA,nsim)
 Y = matrix(rep(NA,nsim*n),nrow=nsim)
@@ -159,7 +159,7 @@ for (r in 1:nsim) {
 	Y[r,] = y
 	DTRhat[r,] = dtrhat = fit1$odtr
 	pos = which(V0[,1]==dtrhat[1] & V0[,2]==dtrhat[2] & V0[,3]==dtrhat[3])
-	val[r] = V0[pos,4]
+	val[r] = V0[pos,4]  #optimal dtr Q-value
 	DTRg[r,] = getGestimate(foo)$odtr	
 	pos = which(V0[,1]==DTRg[r,1] & V0[,2]==DTRg[r,2] & V0[,3]==DTRg[r,3])
 	valg[r] = V0[pos,4]

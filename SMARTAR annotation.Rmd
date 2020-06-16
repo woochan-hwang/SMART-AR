@@ -1,7 +1,8 @@
 ---
 title: "Annotated review with code for SMART-AR"
 author: Woochan H.
-output: html_document
+output:
+    html_document
 ---
 
 ### Introduction
@@ -104,7 +105,7 @@ The authors define the adaptive randomisation policy $\hat{\pi}_t(a \mid h_{ti})
 
 The authors also integrate historical context by using a weighted average of $\pi_t^0$ and $\hat{\pi}_t$ using hyperparameter $\lambda \in [0,1]$ which decreases as $n(i)$ grows. Thus, the historical $\pi_t^0$ influences the randomization probabilities even after AR is in effect, although its contribution goes to zero as $n(i)$ increases when b > 1.
 
-* $\tilde{\rho}_t = exp((\lambda^{b-1})\pi_t^0 + (1- \lambda^{b-1})\hat{\pi}_t)$
+* $\tilde{\rho}_t = exp((\lambda^{b-1})log(\pi_t^0) + (1- \lambda^{b-1})log(\hat{\pi}_t))$
 * $\lambda_n = \tau^{1/(b-1)}N_{min}/n$
 
 ```{r}
@@ -187,7 +188,7 @@ The hyperparameters used for tuning the defined SMART-AR approach are:
 ### Application: Depression Treatment Programme
 
 #### Analysis of historical data: specification of $\pi_t^0$
-The authors set up the initial randomization probabilities $\pi_0^t$ in the SMART-AR using the data of CODIACS, in which information about $(Ati, Ri, Yi)$ is available in 108 subjects with 56 receiving no PST and 52 receiving PST at baseline. Let $R_i$ denote successful treatment outcome (i.e. decreased severity on depression questionnaire) at intermediate evaluation. *Only 71 patients tested positive from the screening in intervention group 1 (screen, notify, treat). Therefore the data must include those that were allocated to group 2 (screen, notify) but received treatment based on the primary clinician's discretion.*
+The authors set up the initial randomization probabilities $\pi_0^t$ in the SMART-AR using the data of CODIACS, in which information about $(Ati, Ri, Yi)$ is available in 108 subjects with 56 receiving no PST and 52 receiving PST at baseline. The actions are defined as $a_{ti} = 0$ for [medication] and $a_{ti} = 1$ for [PST] Let $R_i$ denote successful treatment outcome (i.e. decreased severity on depression questionnaire) at intermediate evaluation. *Only 71 patients tested positive from the screening in intervention group 1 (screen, notify, treat). Therefore the data must include those that were allocated to group 2 (screen, notify) but received treatment based on the primary clinician's discretion.*
 
 * $Q_2(h_{2i},a_{2i}; \theta_2) = \beta_0 + \beta_1a_{1i} + \beta_2a_{2i} + \beta_3a_{1i}a_{2i} + \gamma_1r_i + \gamma_2r_i(1-a_{1i})a_{2i} + \gamma_3r_ia_{1i}(1-a_{2i})$
 
@@ -237,6 +238,8 @@ The authors defined "average performance" as follows to evaluate the performance
 
 * $AV(\hat{d}) = \frac{V(\hat{d}) - V(d^W)}{V(d^*) - V(d^W)}$
 * $APO_{100} = \frac{\bar{Y}_{100} - V(d^W)}{V(d^*) - V(d^W)}$, where $\bar{Y}_{100}$ is mean treatment outcome (i.e. BDI score reduction) of the first 100 patients.
+
+Specifically, the outcomes Y in the simulations were generated as normal with mean specified according to the saturated model and variance 45; and the parameter values of Scenarios 1–4 in Table 2 were used in the calibration scenarios; these values were chosen so that the non-saturated analysis model was correct. The least squares $\gamma_2 = −13 (P = 0.03)$ is in line with the expectation that a patient showing response to initial medication should continue with the medication. On the other hand, the least squares $\gamma_3 = 6.5$ with $P = 0.27$ is ambivalent about whether playing the winner is optimal for PST.
 
 $E\big\{AV(\hat{d})\big\}$ and $var\big\{AV(\hat{d})\big\}$ was calculated based on 1000 simulation replicates for 6 different scenarios, where the $\hat{Q}_t$ parameters were fitted as seen in the table below. The optimal parameters were found to be $b = 10$, $N_{min} = 30$, and $\tau = 0.75$.
 
@@ -292,7 +295,7 @@ $~$
 
 (5) Under SMART-PTW(m), the parameter $\gamma_2$ is not estimable because $R(1 − A_1)A_2$ is completely confounded by the main effects A1, R, and A2; thus, there is no Q-learning results for this design (and SMART-PT(W) for the same reason).
 
-(6) SMART-AR(opt), SMART-AR(1), and SMART-B have similar accuracy in terms of the probability of $\hat{d}$ correctly estimating $d^*$ and the adjusted value $E\big\{AV(\hat{d})\big\}$. On the other hand, SMART-AR(opt) yields more efficient estimator $\hat{d}$ with smaller variability in its value than SMART-B. At first glance, it may not appear to be feasible, because balanced randomization maximizes comparative power between two treatment sequences. However, since our goal is not to compare all possible sequences, but rather identify the optimal one among the good ones, AR allocates resources to the promising sequences thus maximizing the resolution of the relevant comparisons. This simulation shows that by incorporating AR to SMART, it does not only allow learning, but also improves learning upon the non-adaptive designs.
+(6) SMART-AR(opt), SMART-AR(1), and SMART-B have similar accuracy in terms of the probability of $\hat{d}$ correctly estimating $d^*$ and the adjusted value $E\{AV(\hat{d})\}$. On the other hand, SMART-AR(opt) yields more efficient estimator $\hat{d}$ with smaller variability in its value than SMART-B. At first glance, it may not appear to be feasible, because balanced randomization maximizes comparative power between two treatment sequences. However, since our goal is not to compare all possible sequences, but rather identify the optimal one among the good ones, AR allocates resources to the promising sequences thus maximizing the resolution of the relevant comparisons. This simulation shows that by incorporating AR to SMART, it does not only allow learning, but also improves learning upon the non-adaptive designs.
 
 (7) Figure 4(b) shows the Q-learning results using the saturated model (5), which in effect is nonparametric. In most scenarios, using model (4) yields smaller var{AV(dˆ)} than (5), even at times when (4) is incorrect; cf. Scenario 5. In Scenario 6, the nonparametric analysis is advantageous in terms of the probability of correctly estimating d*. Its advantage is less pronounced in terms of E{AV(dˆ)}, as Q-learning using model (4) often leads to selecting the second best DTR, which is not far worse than d*.
 
@@ -308,13 +311,23 @@ $~$
 
 ### Extending SMART-AR
 
-#### Proposal 1: Statistical power analysis
-The goal of a SMART design is to identify the optimal DTR. Hence the statistical power for the hypothesis can by defined as $1 - \beta_k$ where $k = a_1, (a_2 \mid r = 0), (a_2 \mid r = 1)$. We look at the chance of mis-identifying the components of the DTR separately. We can also look at the overall statistical power where $\beta$ is defined as the type 2 error for the complete DTR.
+#### General comments (noting underdeveloped thoughts)
+This paper proposes a clinical trial design where the goal is to identify the optimal DTR. Previous attempts of integrating reinforcement learning methods in personalised healthcare [Raghu 2017] is also driven by the same motivation. The key distinction of the two approaches seems to be in the incorporation of 'randomisation' in the process of discovering the optimal DTR. I believe this intervention component is key to arriving at causal conclusions, albeit at extensive resource costs, and needs to be considered when proposing personalised treatment recommendation algorithms. Where a clinical trial is feasible, SMART with adaptive randomisation may alleviate some of the practical limitations of large (state,action) space problems. On the other hand, if we have to rely on observational datasets, defining the 'target trial' [Hernan 2016] to resemble a SMART design may be more appropriate that a non-sequential design.
+
+
+#### Proposal 1: Statistical power analysis under different adaptation strategies.
+The existing SMART-AR framework allows for a very flexible adaptation strategy from the perspective of when and how aggressive the adaptation should be. However, it is limited to a patient-benefit focused myopic RAR strategy. We can analyse other classes such as power focused or non-myopic RAR algorithms and propose an analysis of operating characteristics under the SMART framework.
 
 #### Proposal 2: Multi-armed extension with control protection
-We can extend the statistical power & $APO_{100}$ analysis in the case of a larger action space. To start simply, we can look at a 2 stage multi-armed SMART trial with a binary interim analysis result. Each stage can have action spaces with size $m$ and $n$.
+We can extend the statistical power & $APO_{100}$ analysis in the case of a larger action space. To start simply, we can look at a 2 stage multi-armed SMART trial with a binary interim analysis result. Each stage can have action spaces with size $m$ and $n$. Other assumptions to consider would be the use of prior data to define $\pi^0_t$, which may be feasible or even realistic in a development scenario where a small amount of pilot trial data may be available prior to formal hypothesis testing.
+
+The goal of the trial may also need to be reconsidered. In the binary scenario, the authors mention that "our goal is not to compare all possible sequences, but rather identify the optimal one among the good ones". However, a multi-armed SMART may be useful when simultaneously testing multiple new candidate components to an existing DTR. In this case, one may wish to know the relative performance and not simply the most optimal sequence.
 
 ### Reference
 Cheung, Ying Kuen, Bibhas Chakraborty, and Karina W. Davidson. "Sequential multiple assignment randomized trial (SMART) with adaptive randomization for quality improvement in depression treatment program." Biometrics 71.2 (2015): 450-459.
 
 Kronish, Ian M., et al. "Effect of depression screening after acute coronary syndromes on quality of life: the CODIACS-QoL randomized clinical trial." JAMA Internal Medicine 180.1 (2020): 45-53.
+
+Raghu, Aniruddh, et al. "Deep reinforcement learning for sepsis treatment." arXiv preprint arXiv:1711.09602 (2017).
+
+Hernán, Miguel A., and James M. Robins. "Using big data to emulate a target trial when a randomized trial is not available." American journal of epidemiology 183.8 (2016): 758-764.
