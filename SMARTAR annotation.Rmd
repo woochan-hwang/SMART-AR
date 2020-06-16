@@ -323,6 +323,16 @@ We can extend the statistical power & $APO_{100}$ analysis in the case of a larg
 
 The goal of the trial may also need to be reconsidered. In the binary scenario, the authors mention that "our goal is not to compare all possible sequences, but rather identify the optimal one among the good ones". However, a multi-armed SMART may be useful when simultaneously testing multiple new candidate components to an existing DTR. In this case, one may wish to know the relative performance and not simply the most optimal sequence.
 
+#### Meeting notes
+
+1. Start with simple reimplementation of code, with formal notion of statistical power.
+2. Consider expanding to 3rd treatment arm for a1 and a2 where we can base the outcomes on the provided Q2sat parameter space
+3. Ideally the RAR should not require so much tuning, but check empirically how sensitive the outcome may be to the tuning parameters. Especially under time-varying distributions.
+4. Formulate a simplified (less tuning required) version of RAR. Read constrained randomised DP paper (~intuitively similar to epsilon greedy, check reference in SMART-AR discussion to epsilon-sequence).
+5. Historical $\pi$ could be analysed independently from the rest of the work. Also effect of mis-identification of historical $\pi$ and the effect or how to adapt to a mis-identified historical data may be of interest.
+6. ?covariate adaptive randomisation using binary response variable... modelling interaction between action sequence.
+
+
 ### Reference
 Cheung, Ying Kuen, Bibhas Chakraborty, and Karina W. Davidson. "Sequential multiple assignment randomized trial (SMART) with adaptive randomization for quality improvement in depression treatment program." Biometrics 71.2 (2015): 450-459.
 
