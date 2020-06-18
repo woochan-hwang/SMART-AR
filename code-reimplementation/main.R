@@ -39,7 +39,7 @@ TAU <- 0.75
 
 # Simulation parameters
 N_PATIENTS <- 100
-N_SIM <- 2  # number of simulation repeats
+N_SIM <- 10  # number of simulation repeats
 
 
 # PRINT STARTING POINT -------------------------
@@ -65,7 +65,6 @@ for (r in 1:N_SIM) {
   for (i in 1:N_PATIENTS) {
     ind_comp <- which(arrival < (arrival[i] - obswin))  # True when patient outcome is available (arrival + trial duration)
     n_comp <- length(ind_comp)
-    print(ind_comp)
 
     if (n_comp < N_MIN)  {
       # Generate DTR sequence
@@ -93,11 +92,8 @@ for (r in 1:N_SIM) {
       w0 <- lambda^{B-1}
       w1 <- 1 - w0
 
-      pi_a1 <- c(pi0_a1_0, pi0_a1_1, pi_hat_a1_0, pi_hat_a1_1)
-      pi1_til <- GetTilProb(w0 = w0, w1 = w1, pi_a1)
-
-      pi_a2 <- c(pi0_a2_0, pi0_a2_1, pi_hat_a2_0, pi_hat_a2_1)
-      pi2_til <- GetTilProb(w0 = w0, w1 = w1, pi_a2)
+      pi1_til <- GetTilProb(w0 = w0, w1 = w1, pi0_a1_0, pi0_a1_1, pi_hat_a1_0, pi_hat_a1_1)
+      pi2_til <- GetTilProb(w0 = w0, w1 = w1, pi0_a2_0, pi0_a2_1, pi_hat_a2_0, pi_hat_a2_1)
 
       # Generate DTR sequence
       a1[i] <- Action1(pi1 = pi1_til)
@@ -127,46 +123,5 @@ for (r in 1:N_SIM) {
 
 
 # PRINT OUTCOME ---------------------------
-cat("\nSMART-AR continuous monitoring\n")
-cat("N:\t",N_PATIENTS,"\n")
-cat("Nmin:",N_MIN,"\n")
-cat("base:",B,"\n")
-cat("tau:",TAU,"\n")
-cat("pi1:",pi0_a1_1,"\n")
-cat("pi2:",pi0_a2_1,"\n")
-cat("arate:", accrate,"\n")
-cat("nsim:",N_SIM,"\n\n")
-
-v4 <- dtr_table[, 4]
-vmax <- which(v4 == max(v4))
-vmax <- dtr_table[vmax, 4]
-vmin <- which(v4 == min(v4))
-vmin <- dtr_table[vmin, 4]
-pcs <- length(which(abs(val-vmax) <= 0.0001))/N_SIM
-pcsg <- length(which(abs(valg-vmax) <= 0.0001))/N_SIM
-
-cat("Distribution of the values of the selected DTR (dhat):\n")
-value_dhat <- val
-print(summary(value_dhat))
-print(table(value_dhat),digits=3)
-cat("\n")
-
-cat("Distribution of the average patient outcome per trial\n")
-patientval <- apply(Y, 1, mean)
-print(summary(patientval))
-
-cat("Some key summary statistics\n")
-cat("\nProbability of selecting the true optimal DTR:", pcs, "\n\n")
-cat("Value of selected dtr (Mean):", mean(val),"\n")
-cat("Value of selected dtr (SD):", sd(val),"\n")
-cat("Value of selected dtr (Q1,Q2,Q3)", quantile(val,c(0.25,0.5,0.75)),"\n")
-cat("Adjusted value of selected dtr (Mean)", (mean(val)-vmin)/(vmax-vmin),"\n")
-cat("Adjusted value of selected dtr (SD)", sd(val)/(vmax-vmin),"\n")
-cat("Adjusted value of selected dtr (Q1,Q2,Q3)", quantile(val-vmin,c(0.25,0.5,0.75))/(vmax-vmin),"\n\n")
-
-cat("Average patient outcome (Mean):", mean(patientval),"\n")
-cat("Average patient outcome (SD):", sd(patientval),"\n")
-cat("Average patient outcome (Q1,Q2,Q3):", quantile(patientval,c(0.25,0.5,0.75)),"\n")
-cat("Adjusted average patient outcome (Mean):", (mean(patientval)-vmin)/(vmax-vmin),"\n")
-cat("Adjusted average patient outcome (SD):", sd(patientval)/(vmax-vmin),"\n")
-cat("Adjusted average patient outcome (Q1,Q2,Q3):", quantile(patientval-vmin,c(0.25,0.5,0.75))/(vmax-vmin),"\n")
+PrintHyperParameters(theta_sat, N_MIN, B, TAU, N_PATIENTS, N_SIM, pi0_a1_1, pi0_a2_1, accrate, obswin)
+PrintSummary(dtr_table, val)

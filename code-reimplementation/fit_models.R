@@ -106,13 +106,9 @@ GetRandProb <- function(foo, base) {
   return (list(PI1 = Pi1, PI2 = Pi2))
 }
 
-GetTilProb <- function(w0, w1, pi_at) {
-  pi0_at_0 <- pi_at[1]
-  pi0_at_1 <- pi_at[2]
-  pi_hat_at_0 <- pi_at[3]
-  pi_hat_at_1 <- pi_at[4]
-  rho_0 = exp(w0*log(pi0_at_0) + w1*log(pi_hat_at_0))
-  rho_1 = exp(w0*log(pi0_at_1) + w1*log(pi_hat_at_1))
+GetTilProb <- function(w0, w1, pi0_at_0, pi0_at_1, pi_hat_at_0, pi_hat_at_1) {
+  rho_0 <- exp(w0*log(pi0_at_0) + w1*log(pi_hat_at_0))
+  rho_1 <- exp(w0*log(pi0_at_1) + w1*log(pi_hat_at_1))
   pi_til <- rho_1  / (rho_0 + rho_1)
   return (pi_til)
 }
@@ -134,12 +130,12 @@ Learning <- function(foo) {
 
   odtr <- rep(NA, 3)
   if (q1_hat[1] >= q1_hat[2])  {
-    odtr[1] = 0
-    odtr[2:3] = c(Q2max(0,0, coef[1],coef[2],coef[3], coef[4],coef[5],coef[6],coef[7])[1], Q2max(0,1,coef[1],coef[2],coef[3],coef[4],coef[5],coef[6],coef[7])[1])
+    odtr[1] <- 0
+    odtr[2:3] <- c(Q2max(0,0, coef[1],coef[2],coef[3], coef[4],coef[5],coef[6],coef[7])[1], Q2max(0,1,coef[1],coef[2],coef[3],coef[4],coef[5],coef[6],coef[7])[1])
   }
   else {
-    odtr[1] = 1
-    odtr[2:3] = c(Q2max(1,0, coef[1],coef[2],coef[3], coef[4],coef[5],coef[6],coef[7])[1], Q2max(1,1,coef[1],coef[2],coef[3],coef[4],coef[5],coef[6],coef[7])[1])
+    odtr[1] <- 1
+    odtr[2:3] <- c(Q2max(1,0, coef[1],coef[2],coef[3], coef[4],coef[5],coef[6],coef[7])[1], Q2max(1,1,coef[1],coef[2],coef[3],coef[4],coef[5],coef[6],coef[7])[1])
   }
   return (list(optimal_dtr = odtr, fit_q1 = summary(fit_q1), fit_q2 = summary(fit_q2),q1_hat = q1_hat))
 }
