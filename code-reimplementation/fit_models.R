@@ -99,8 +99,9 @@ FitPi2 <- function(q2, base) {
 # Response Adaptive Randomisation ---------------------------
 GetRandProb <- function(foo, base) {
   fit_q2 <- foo %>% FitQ2()
-  y_hat <- fit_q2 %>% FitPseudoOutcome(foo = foo)
-  fit_q1 <- y_hat %>% FitQ1(foo = foo)
+  fit_q1 <- fit_q2 %>%
+    FitPseudoOutcome(foo = foo) %>%
+    FitQ1(foo = foo)
   Pi1 <- fit_q1 %>% FitPi1(foo = foo, base = base)
   Pi2 <- fit_q2 %>% FitPi2(base = base)
   return (list(PI1 = Pi1, PI2 = Pi2))
