@@ -39,13 +39,20 @@ TAU <- 0.75
 
 # Simulation parameters
 N_PATIENTS <- 100
-N_SIM <- 10  # number of simulation repeats
+N_SIM <- 100  # number of simulation repeats
 
+FIXED_EQUAL_RANDOMISATION <- TRUE
+if (FIXED_EQUAL_RANDOMISATION) {
+  B <- 1
+  pi0_a1_1 <- 0.5
+  pi0_a1_0 <- 1 - pi0_a1_1
+  pi0_a2_1 <- c(0.5, 0.5, 0.5, 0.5)
+  pi0_a2_0 <- 1 - pi0_a2_1
+}
 
 # PRINT STARTING POINT -------------------------
 theta_sat <- THETA_3
 dtr_table <- DtrTable(response_prob_a1_0, response_prob_a1_1, theta_sat) %>% PrintDtrTable()
-
 
 # RUN SIMULATIONS ------------------------------
 set.seed(0202)
@@ -120,7 +127,6 @@ for (r in 1:N_SIM) {
   #               dtr_table[, 3] == DTRg[r, 3])
   #valg[r] = dtr_table[pos, 4]
 }
-
 
 # PRINT OUTCOME ---------------------------
 PrintHyperParameters(theta_sat, N_MIN, B, TAU, N_PATIENTS, N_SIM, pi0_a1_1, pi0_a2_1, accrate, obswin)
