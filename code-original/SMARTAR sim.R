@@ -30,7 +30,7 @@ Theta5 = c(1.320, 6.480, 9.180, 9.555, -11.822, 4.645, -14.855, 6.382)    # Scen
 Theta6 = c(2.206, 5.594, 8.294, 7.745, -12.102, -6.455, -13.045, -19.5)    # Scene 6 (modified scene 3)
 
 
-theta = Theta1
+theta = Theta3
 
 
 Q2sat = function(a1,resp,a2, theta0 = theta) {
@@ -93,7 +93,7 @@ obswin = 6  # observations will become available at calendar time (arrival + obs
 
 
 set.seed(0202)
-nsim = 5
+nsim = 2
 DTRg = DTRhat = matrix(rep(NA,nsim*3),nrow=nsim)
 valg = val = rep(NA,nsim)
 Y = matrix(rep(NA,nsim*n),nrow=nsim)
@@ -109,6 +109,7 @@ for (r in 1:nsim) {
 	a1 = a2 = R = y = rep(NA,n)
 	for (i in 1:n) {
 		indcomp = which(arrival < (arrival[i] - obswin))
+		print(indcomp)
 		ncomp = length(indcomp)
 		if (ncomp < n1)  {   # AR does not begin until there are n1 complete observations
 			a1[i] = rbinom(1,1,pi1)
@@ -156,6 +157,7 @@ for (r in 1:nsim) {
 	foo = cbind(a1,R,a2,y)
 	fit1 = learning(foo)
 
+	print(y)
 	Y[r,] = y
 	DTRhat[r,] = dtrhat = fit1$odtr
 	pos = which(V0[,1]==dtrhat[1] & V0[,2]==dtrhat[2] & V0[,3]==dtrhat[3])

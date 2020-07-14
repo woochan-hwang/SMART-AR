@@ -34,6 +34,20 @@ Action2 <- function(a1, R, pi2) {
 }
 
 
+# Hypothesis testing -------------------------
+
+# standard CI construction for a sample drawn from a normal distribution
+ConfidenceInterval <- function(sample, range = 95) {
+  mean <- mean(sample)
+  standard_dev <- sd(sample)
+  sample_size <- length(sample)
+  z <- c(2.576, 2.326, 1.96, 1.645)[which(range == c(99, 98, 95, 90))]
+  lower_bound <- mean - z * standard_dev / sqrt(sample_size)
+  upper_bound <- mean + z * standard_dev / sqrt(sample_size)
+  return (c(lower_bound, upper_bound))
+}
+
+
 # Output functions ---------------------------
 DtrTable <- function(response_prob_a1_0, response_prob_a1_1, theta_sat) {
   dtr_table <- matrix(rep(NA,4*8),nrow=8)
@@ -112,6 +126,7 @@ PrintSummary <- function(dtr_table, val) {
   cat("Value of selected dtr (Mean):", mean(val),"\n")
   cat("Value of selected dtr (SD):", sd(val),"\n")
   cat("Value of selected dtr (Q1,Q2,Q3)", quantile(val,c(0.25,0.5,0.75)),"\n")
+  cat("95% Confidence Interval for selected dtr:", ConfidenceInterval(val, 95),"\n")
   cat("Adjusted value of selected dtr (Mean)", (mean(val)-vmin)/(vmax-vmin),"\n")
   cat("Adjusted value of selected dtr (SD)", sd(val)/(vmax-vmin),"\n")
   cat("Adjusted value of selected dtr (Q1,Q2,Q3)", quantile(val-vmin,c(0.25,0.5,0.75))/(vmax-vmin),"\n\n")
