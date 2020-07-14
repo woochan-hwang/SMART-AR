@@ -1,22 +1,17 @@
 # Applying constrained randomised dynamic programming to SMART
 # Woochan H. 2020, supervised by Dr David Robertson & Dr Sofia VIllar
+# Includes functions for training and inference for simulations
 
 # NOTES TO SELF
 # All nested CRDPs should have equal degrees of randomisation and constraints given that ethically we should not be
 # experimenting if we believed a certain arm to be definitively inferior to the others.
-
 
 # Load dependencies ------------------------
 source("utility_functions.R")
 source("crdp.R")
 library(assertthat)
 
-# HYPERPARAMETERS ---------------------------
-A1_prior <- c(1,1,1,1)
-A2_prior <- c(1,1,1,1)
-
-
-# KEY FUNCTIONS -----------------------------
+# KEY TRAINING FUNCTIONS -----------------------------
 # Enumeration of possible state space for a binary trial given sample size
 CreateValueMatrix <- function(sample_size, constraint) {
 
@@ -58,7 +53,7 @@ CreateMaxQ2Table <- function(q1_index_matrix, q2_list) {
     for (j in 1:n1) {
       n <- column[j,1]
       if (n >= 4) {
-        val <- q2_list[[paste("n", n, "max_q2", sep="_")]]
+        val <- q2_list[[paste("N", n, "MAX", sep="_")]]
         ref <- paste("A2", i, "val", sep="_")
         mydata[ref][j,1] <- val
       }
@@ -123,13 +118,15 @@ BackwardsQ1Matrix <- function(sample_size, value_matrix, prior_matrix, p) {
 
 
 # NESTED CRDP -------------------------------
-NestedCRDP <- function(sample_size, a1_prior_vector, a2_prior_vector, randomisation, constraint) {
+# input: (sample_size, a1_prior_vector, a2_prior_vector, randomisation, constraint) where the prior vectors
+# are vectors of length 4 (s_a,f_a,s_b,f_b); 0 <= constraint <= 0.5 <= randomisation <= 1; sample_size = int;
+# return: a list with "Q1" and "Q2", where Q1 <- list("ACTION", "VALUE"); Q2 <- list("N_i_ACTION") for i in range(Q2)
+TrainNestedCRDP <- function(sample_size, a1_prior_vector, a2_prior_vector, randomisation, constraint) {
 
   # DTR step 1 forward pass
   q1 <- CreateValueMatrix(sample_size = sample_size, constraint = constraint)
   q1_value_matrix <- q1$VALUE
   q1_index_matrix <- q1$INDICES
-  print("Created value matrix template")
 
   n1 <- dim(q1_index_matrix)[1]
   q1_max <- max(q1_index_matrix[,1])  # BUG: THIS NEEDS TO BE ACROSS ALL DIMS IN CASE OF NON-SYMMETRIC PRIORS
@@ -137,32 +134,85 @@ NestedCRDP <- function(sample_size, a1_prior_vector, a2_prior_vector, randomisat
 
   # DTR step 2 CRDP iteration
   q2_list <- list()
-  print("Running nested CRDP for DTR step 2 ...")
+  print("[Running] Nested CRDP for DTR step 2 ...")
   for (i in q1_min:q1_max) {
     q2 <- CRDP(n = i, prior_vector = a2_prior_vector, p = randomisation, Y = constraint)
-    name1 <- paste("n", i, "action_matrix", sep="_")
-    name2 <- paste("n", i, "max_q2", sep="_")
+    name1 <- paste("N", i, "ACTION", sep="_")
+    name2 <- paste("N", i, "MAX", sep="_")
     q2_list[[name1]] <- q2$ACTION
     q2_list[[name2]] <- max(q2$VALUE)
   }
   print("[Completed] Nested CRDP for DTR step 2")
 
   # create dataframe with maximum q2 val per q1 index
-  mydata <- CreateMaxQ2Table(q1_value_matrix, q2_list)
+  Q2Table <- CreateMaxQ2Table(q1_index_matrix, q2_list)
   print("[Completed] IPTW value calculated for DTR step 2")
+  print("[Printing] Calculated Q2 value matrix sample...")
+  print(head(Q2Table, 3))
 
   # Backwards induction
   for (i in 1:n1) {
-    r <- mydata[i,]
+    r <- Q2Table[i,]
     q1_value_matrix[r[[1]],r[[2]],r[[3]]] <- r$"A2_IPTW_val"
   }
-  print("Running backwards induction for Q1...")
+  print("[Running] Backwards induction for Q1...")
   q1_optim <- BackwardsQ1Matrix(sample_size, q1_value_matrix, a1_prior_vector, randomisation)
   print("[Completed] Backwards induction for Q1")
 
-  return (q1_optim)
+  return (list("Q1"=q1_optim, "Q2"=q2_list))
 }
 
-#NestedCRDP(30, A1_prior, A2_prior, 0.7, 0.4)
 
+# KEY INFERENCE FUNCTIONS ---------------------------
+SelectTreatment <- function(optimal_action, degree_of_randomisation) {
+  if (optimal_action == 0) {
+    selected_action <- 1 - rbinom(1, 1, degree_of_randomisation)  # d_o_r = P(opitmal_action == selected_action)
+  }
+  else if (optimal_action == 1) {
+    selected_action <- rbinom(1,1, degree_of_randomisation)
+  }
+  else {
+    selected_action <- rbinom(1,1, 0.5)  # optimal_action == 2 when ambiguous
+  }
+  return (selected_action)
+}
 
+GetInterimResponse <- function(selected_action, response_prob_a1_a, response_prob_a1_b) {
+  if (selected_action == 0) {
+    response <- rbinom(1, 1, response_prob_a1_a)
+  }
+  if (selected_action == 1) {
+    response <- rbinom(1, 1, response_prob_a1_b)
+  }
+  return (response)
+}
+
+UpdateCurrentBelief <- function(belief_vector, action, response) {
+  i <- belief_vector[1]
+  j <- belief_vector[2]
+  k <- belief_vector[3]
+  l <- belief_vector[4]
+
+  if (action == 0) {
+    if (response == 1) {i <- i + 1}
+    if (response == 0) {j <- j + 1}
+  }
+  if (action == 1) {
+    if (response == 1) {k <- k + 1}
+    if (response == 0) {l <- l + 1}
+  }
+  return(c(i,j,k,l))
+}
+
+GetOutcome <- function(a1, a2, response_prob_a2_aa, response_prob_a2_ab, response_prob_a2_ba, response_prob_a2_bb) {
+  if (a2 == 0) {
+    # generate response given (o1, a1, o2, a2)
+    if (a1 == 0) {response <- rbinom(1, 1, response_prob_a2_aa)}
+    if (a1 == 1) {response <- rbinom(1, 1, response_prob_a2_ba)}
+  }
+  if (a2 == 1) {
+    if (a1 == 0) {response <- rbinom(1, 1, response_prob_a2_ab)}
+    if (a1 == 1) {response <- rbinom(1, 1, response_prob_a2_bb)}
+  }
+  return (response)
+}
