@@ -60,8 +60,8 @@ CreateMaxQ2Table <- function(q1_index_matrix, q2_list) {
     }
   }
   # IPTW
-  mydata$"A2_IPTW_ij" <- (mydata$"A1_i"+mydata$"A1_j")*((mydata$"A2_i_val"/mydata$"A1_i")+(mydata$"A2_j_val"/mydata$"A1_j"))
-  mydata$"A2_IPTW_kl" <- (mydata$"A1_k"+mydata$"A1_l")*((mydata$"A2_k_val"/mydata$"A1_k")+(mydata$"A2_l_val"/mydata$"A1_l"))
+  mydata$"A2_IPTW_ij" <- (mydata$"A1_i"+mydata$"A1_j")*((mydata$"A2_i_val"/mydata$"A1_i")+(mydata$"A2_j_val"/mydata$"A1_j"))/2
+  mydata$"A2_IPTW_kl" <- (mydata$"A1_k"+mydata$"A1_l")*((mydata$"A2_k_val"/mydata$"A1_k")+(mydata$"A2_l_val"/mydata$"A1_l"))/2
   # max_value
   larger_ij <- which(mydata$"A2_IPTW_ij" > mydata$"A2_IPTW_kl")
   larger_kl <- which(mydata$"A2_IPTW_ij" <= mydata$"A2_IPTW_kl")
@@ -124,6 +124,8 @@ BackwardsQ1Matrix <- function(sample_size, value_matrix, prior_matrix, p) {
 TrainNestedCRDP <- function(sample_size, a1_prior_vector, a2_prior_vector, randomisation, constraint) {
 
   # DTR step 1 forward pass
+  cat("[Running] Nested CRDP for DTR step 1 ... \n")
+  ptm <- proc.time()
   q1 <- CreateValueMatrix(sample_size = sample_size, constraint = constraint)
   q1_value_matrix <- q1$VALUE
   q1_index_matrix <- q1$INDICES
@@ -131,10 +133,12 @@ TrainNestedCRDP <- function(sample_size, a1_prior_vector, a2_prior_vector, rando
   n1 <- dim(q1_index_matrix)[1]
   q1_max <- max(q1_index_matrix[,1])  # BUG: THIS NEEDS TO BE ACROSS ALL DIMS IN CASE OF NON-SYMMETRIC PRIORS
   q1_min <- max(min(q1_index_matrix[,1]), 4)
+  cat("[Completed] Forward pass for DTR step 1:", (proc.time() - ptm)[[3]], "s \n")
 
   # DTR step 2 CRDP iteration
   q2_list <- list()
-  print("[Running] Nested CRDP for DTR step 2 ...")
+  cat("[Running] Nested CRDP for DTR step 2 ... \n")
+  ptm <- proc.time()
   for (i in q1_min:q1_max) {
     q2 <- CRDP(n = i, prior_vector = a2_prior_vector, p = randomisation, Y = constraint)
     name1 <- paste("N", i, "ACTION", sep="_")
@@ -142,22 +146,25 @@ TrainNestedCRDP <- function(sample_size, a1_prior_vector, a2_prior_vector, rando
     q2_list[[name1]] <- q2$ACTION
     q2_list[[name2]] <- max(q2$VALUE)
   }
-  print("[Completed] Nested CRDP for DTR step 2")
+  cat("[Completed] Nested CRDP for DTR step 2:", (proc.time() - ptm)[[3]], "s \n")
 
   # create dataframe with maximum q2 val per q1 index
+  cat("[Running] IPTW of step 2 values... \n")
+  ptm <- proc.time()
   Q2Table <- CreateMaxQ2Table(q1_index_matrix, q2_list)
-  print("[Completed] IPTW value calculated for DTR step 2")
-  print("[Printing] Calculated Q2 value matrix sample...")
+  cat("[Completed] IPTW value calculated for DTR step 2:", (proc.time() - ptm)[[3]], "s \n")
+  cat("[Printing] Calculated Q2 value matrix sample... \n")
   print(head(Q2Table, 3))
 
   # Backwards induction
+  cat("[Running] Backwards induction for step 1... \n")
+  ptm <- proc.time()
   for (i in 1:n1) {
     r <- Q2Table[i,]
     q1_value_matrix[r[[1]],r[[2]],r[[3]]] <- r$"A2_IPTW_val"
   }
-  print("[Running] Backwards induction for Q1...")
   q1_optim <- BackwardsQ1Matrix(sample_size, q1_value_matrix, a1_prior_vector, randomisation)
-  print("[Completed] Backwards induction for Q1")
+  cat("[Completed] Backwards induction for step 1:", (proc.time() - ptm)[[3]], "s \n")
 
   return (list("Q1"=q1_optim, "Q2"=q2_list))
 }
