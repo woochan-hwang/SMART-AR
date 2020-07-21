@@ -24,12 +24,11 @@ HypothesisTesting <- function(dataframe, null, alternative, a1.h = NA, r.h = NA)
     sim_results <- rbind(c(length(which(y[a2==0]==1)), length(which(y[a2==0]==0))),
                          c(length(which(y[a2==1]==1)), length(which(y[a2==1]==0))))
   } else if (null == 'a2.given.a1') {
-    sim_results <- rbind(c(length(which(y[a2[a1==a1.h]==0]==1)), length(which(y[a2[a1==a1.h]==0]==0))),
-                         c(length(which(y[a2[a1==a1.h]==1]==1)), length(which(y[a2[a1==a1.h]==1]==0))))
+    sim_results <- rbind(c(length(which(y[which(a2[a1==a1.h]==0)]==1)), length(which(y[which(a2[a1==a1.h]==0)]==0))),
+                         c(length(which(y[which(a2[a1==a1.h]==1)]==1)), length(which(y[which(a2[a1==a1.h]==1)]==0))))
   } else if (null == 'a2.given.r') {
-    sim_results <- rbind(c(length(which(y[a2[r[a1==a1.h]==r.h]==0]==1)), length(which(y[a2[r[a1==a1.h]==r.h]==0]==0))),
-                         c(length(which(y[a2[r[a1==a1.h]==r.h]==1]==1)), length(which(y[a2[r[a1==a1.h]==r.h]==1]==0))))
   }
+#  cat("Hypothesis testing performed on: ", sim_results, "\n")
   results <- fisher.test(sim_results, alternative = alternative, conf.int = FALSE)
   return (results)
 }
