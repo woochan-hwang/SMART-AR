@@ -2,8 +2,10 @@
 # Woochan H. 2020, supervised by Dr David Robertson & Dr Sofia VIllar
 
 # LOAD DEPENDENCY ---------------------------
+suppressMessages(library(R.utils))
 source("nested_crdp.R")
 source("utility_functions.R")
+options(warnings=-1)
 
 
 # HYPERPARAMETERS ---------------------------
@@ -18,26 +20,32 @@ bayes_prior_a2 <- c(1,1,1,1)
 # Simulation parameters
 N_SIM <- 10000  # number of simulation repeats
 N_PATIENTS <- 75
-#accrate <- 4   # patients / month
-#obswin <- 6  # trial duration (month), response analysed at (arrival + obswin)
 
 # True distribution parameters
-response_prob_a1_a <- 0.5
+response_prob_a1_a <- 0.7
 response_prob_a1_b <- 0.5
 response_prob_a2_aa <- 0.5
-response_prob_a2_ab <- 0.7
+response_prob_a2_ab <- 0.1
 response_prob_a2_ba <- 0.5
-response_prob_a2_bb <- 0.7
+response_prob_a2_bb <- 0.5
 
 # Hypothesis testing parameters
 null_hypothesis <- "a2.given.a1"  # c("a1", "a2.combined", "a2.given.a1", "a2.given.r")
 alternative <- "two.sided"  # c("two.sided", "greater", "less")
-a1_h <- 0; r_h <- 0
-significance_level <- 0.1
+a1_h <- 0; r_h <- 0  # required for "a2.given.a1", "a2.given.r"
+significance_level <- 0.1  # set as 0.1 in original paper
+
+# Overwrite based on command line input
+args <- commandArgs(asValue=TRUE, excludeReserved=TRUE, adhoc=TRUE)[-1]
+keys <- attachLocally(args, overwrite=TRUE)
+
+# True outcome based on given parameters
 ground_truth <- ExperimentSetting(null_hypothesis, response_prob_a1_a, response_prob_a1_b, response_prob_a2_aa,
-                                  response_prob_a2_ab, response_prob_a2_ba, response_prob_a2_bb)$ground_truth
+                                  response_prob_a2_ab, response_prob_a2_ba, response_prob_a2_bb, a1_h)$ground_truth
 superior_treatment <- ExperimentSetting(null_hypothesis, response_prob_a1_a, response_prob_a1_b, response_prob_a2_aa,
-                                        response_prob_a2_ab, response_prob_a2_ba, response_prob_a2_bb)$superior_treatment
+                                        response_prob_a2_ab, response_prob_a2_ba, response_prob_a2_bb, a1_h)$superior_treatment
+parameterList <- PrintHyperParameters(returnList=TRUE)
+
 
 # RUN SIMULATIONS ------------------------------
 set.seed(0202)

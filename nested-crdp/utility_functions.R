@@ -3,7 +3,6 @@
 # Includes misc functions for hypothesis testing of simulation outputs
 
 # LOAD DEPENDENCY ---------------------------
-library(magrittr)
 
 
 # PERFORMANCE METRICS -----------------------
@@ -50,7 +49,10 @@ PatientOutcome <- function(dataframe, null, a1.h, r.h, superior.treatment) {
   return (outcome)
 }
 
-ExperimentSetting <- function(null, response_prob_a1_a, response_prob_a1_b, response_prob_a2_aa, response_prob_a2_ab, response_prob_a2_ba, response_prob_a2_bb) {
+ExperimentSetting <- function(null, response_prob_a1_a, response_prob_a1_b, response_prob_a2_aa, response_prob_a2_ab, response_prob_a2_ba, response_prob_a2_bb, a1_h) {
+
+  if (a1_h == 0) {a1_h <- 'a'}
+  else {a1_h <- 'b'}
 
   if (null == "a1") {
     prob1 <- response_prob_a1_a
@@ -95,4 +97,22 @@ PrintIterationSummary <- function(dataframe) {
 #  cat("\n")
 #  cat("Y  |", y, "\n")
   return(dataframe)
+}
+
+PrintHyperParameters <- function(returnList) {
+  listOfParameters <- list()
+  parameterNames <- c("degree_of_randomisation", "degree_of_constraint", "bayes_prior_a1", "bayes_prior_a2",
+                      "N_SIM", "N_PATIENTS", "response_prob_a1_a", "response_prob_a1_b", "response_prob_a2_aa",
+                      "response_prob_a2_ab", "response_prob_a2_ba", "response_prob_a2_bb", "null_hypothesis",
+                      "alternative", "a1_h", "r_h", "significance_level", "ground_truth", "superior_treatment")
+  for (obj in parameterNames) {
+    listOfParameters[[obj]] <- get(obj)
+  }
+  listOfParameters <- as.data.frame(listOfParameters)
+  print(head(listOfParameters, 1))
+  if (returnList) {return (listOfParameters)}
+}
+
+SaveExperimentOutcome <- funciton(parameterList, overwrite=FALSE) {
+
 }
