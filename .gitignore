@@ -3,3 +3,4 @@
 *.pdf
 Notes.Rmd
 binarybandit.jl
+utility_functions.jl
