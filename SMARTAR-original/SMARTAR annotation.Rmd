@@ -1,0 +1,320 @@
+---
+title: "Annotated review with code for SMART-AR"
+author: Woochan H.
+output:
+    html_document
+---
+
+### Introduction
+Motivation for using dynamic treatment regime analysis in depression care is explained as follows:
+
+> As the management of depression may involve multiple treatment components given over a period of time, a successful intervention is likely a direct result of administering each component or their combination in an optimal sequence, possibly based on intermediate outcomes, with an objective to maximize the eventual health outcome. Thus, the optimal intervention is potentially a dynamic treatment regimen. ...In an attempt to improve care of patients with depression after acute coronary syndrome, Davidson et al. (2013) compare a centralized depression care approach to standard care in the Comparison of Depression Interventions after Acute Coronary Syndrome (CODIACS) Vanguard trial. The trial adopted the stepped care approach, whereby initial treatments were chosen based on patient preference or standard care, and then “stepped” based on intermediate symptoms in the treatment arm. As a result, patients in CODIACS received different treatment sequences.
+
+The CODAICS-QoL trial that they have utilized to test SMART-AR was NOT designed in principle for the purpose of testing dynamic treatment regimes. The data used in this study is focused on the first intervention arm of the CODIACS-QoL trial which delivers "stepped care" as part of the intervention package. The details of the trial are summarised in the next section.
+
+The motivation for the use of adaptive randomisation in the context of SMART is proposed as:
+
+> A regular SMART design randomizes subjects to available treatment options according to pre-specified probabilities, ... a typical strategy aims to achieve equal sample sizes across possible treatment sequences (Murphy, 2005b). This approach in theory maximizes the comparative power for comparing two treatment sequences, but it is at odds with the objective of an implementation study. In addition, in order to cover all possible branches of treatment sequences, a SMART design may suffer from the “curse of dimensionality”. In drug trials ... it is quite common to use the play-the-winner strategy, whereby a patient with a positive intermediate outcome will stay on the same treatment. ... playing the winner is not necessarily the ethical or optimal approach for behavioral interventions.
+
+### CODIAS-QoL Trial
+**Objective:** To determine whether systematically screening for depression in survivors of ACS improves quality of life and depression compared with usual care.
+
+**Participants:** Multisite randomized trial, 1500 patients with ACS in the previous 2 to 12 months and had no prior history of depression. Intention-to-treat analysis.
+
+**Interventions:** Randomly assigned (1:1:1) to receive:
+
+(1) [screen, notify, treat] screening with PHQ-8 questionnaire, with notification of primary care clinicians and provision of ***stepped depression care***;
+
+(2) [screen, notify] screening, with notification of primary care clinicians for those with positive screening results;
+
+(3) [no screen] usual care
+
+**Stepped care includes,** a) participant preference for either brief, cognitive behavioral therapy (CBT, in this context equivalent to problem solving therapy or PST), delivered centrally by telephone, or antidepressant medication managed at the local site, or both, or neither, and b) review of progress at approximately 2-month intervals, with "stepping up" of care if sufficient progress is not being realized.
+
+**Outcomes:** The primary outcome was change in quality-adjusted life-years. Secondary outcome was depression-free days.
+
+**Results:** Only 71 of 1000 eligible survivors of ACS (treatment group 1&2, 7.1%) had elevated scores indicating depressive symptoms at screening. No differences in mean (SD) change in quality-adjusted life-years or cumulative mean (SD) depression-free days. Harms including death, bleeding, or sleep difficulties did not differ among groups.
+
+### Methods
+```{r, echo=FALSE, results='hide'}
+source('SMARTAR sim.R') # load simulation provided by authors
+library(knitr)
+library(png)
+```
+
+#### Q-learning
+Notations:
+
+* $A_{ti}$ : treatment given to patient i at stage t
+* $S_{t}$ : set of treatment options at stage t, where $A_{ti} \in S_{t}$
+* $J_{t}$ :  number of treatment options at stage t
+* $H_{ti}$ : history for patient i at stage t
+* $Y_i$ : health outcome for patient i
+* $\pi_t(a \mid h_{ti})$ : probability of ith patient being enrolled to stage t intervention a, typically $1/J_{t}$ in non-adaptive DTR
+* $d_{t}^{*}(h_{t}) \in S_{t}$ : optimal decision given patient history
+
+We focus on a 2 stage DTR setting where the Q-functions are defined as:
+
+* $Q_2(h_2,a_2) = E [Y_i \mid H_{2i} = h_2, A_{2i} = a_2]$
+* $Q_1(h_1,a_1) = E [max_{a2 \in s2} Q_2(H_{2i}, a_2) \mid H_{1i} = h_1, A_{1i} = a_1]$
+
+Because the optimal DTR, $d_{t}^{*}(h_{t}) \in S_{t}$, is intractable, we estimate the Q-function using linear regression
+
+* $Q_t(h_t,a_t; \theta_t) = \theta_{t0} + \theta_{t1}^T(h_t) + \theta_{t2}^T(a_t) + \theta_{t3}^T(h_ta_t)$
+
+* $\hat{\theta}_2 = arg min_\theta \sum_{i=1}^{n} (Y_i - Q_2(H_{2i}, A_{2i}; \theta))^2$
+
+For Q1 we define a pseudo-outcome $\hat{Y}_i$ as a proxy for the expectation defined and estimate the parameters using least squares for the pseudo-outcome.
+
+* $\hat{Y}_i = max_{a2 \in s2} Q2(H_{2i}, a_2; \hat{\theta}_2)$
+
+* $\hat{\theta}_1 = arg min_\theta \sum_{i=1}^{n} (\hat{Y}_i - Q_1(H_{1i}, A_{1i}; \theta))^2$
+
+
+```{r}
+# pseudo-outcome, return largest Q2 given possible action space
+Q2max = function(a1,resp,b0,b1,b2,b3,g1,g2,g3) {  # resp = binary variable, intermediate outcome to a1
+  Q20 = Q2(a1,resp,0,b0,b1,b2,b3,g1,g2,g3)
+  Q21 = Q2(a1,resp,1,b0,b1,b2,b3,g1,g2,g3)
+  if (Q20 >= Q21)  return( c(0,Q20) )
+  else { return( c(1,Q21) ) }
+}
+# p = probability of responding to treatment a1 (i.e. P[resp = 1 | Ai = a1])
+# not used in fitting Q-function
+Q1 = function(a1,b0,b1,b2,b3,g1,g2,g3,p) {
+  val = (1-p)*Q2max(a1,0, b0,b1,b2,b3,g1,g2,g3)[2] + p*Q2max(a1,1,b0,b1,b2,b3,g1,g2,g3)[2]
+  return(val)
+}
+```
+
+
+#### SMART with adaptive randomisation
+Let $n(i)$ denote the number of patients with the final outcome evaluated just prior to enrollment of patient i (likely n(i) < i-1 as patients enroll in a staggered fashion). Let $N_{min}$ be a pre-specified number of patients, where the allocation probability is a pre-specified and static value, $\pi_t^0(a \mid h_{ti})$, for all patients where $n(i) < N_{min}$.
+
+* $\hat{\rho}(a \mid h_{ti}) = \exp(\frac{Q_t(h_t,a_t; \hat{\theta}_t)}{\hat{\sigma}_t}log(b))$ and $\hat{\sigma}_t^2 = \frac{\sum_{k=1}^{n(i)}{(\hat{Y}_k} - Q_t(h_{tk},a_{tk}; \hat{\theta}_t))^2}{n(i) - dim(\theta_t)}$
+
+The authors define the adaptive randomisation policy $\hat{\pi}_t(a \mid h_{ti})$ for $n(i) \geq N_{min}$ as:
+
+* $\hat{\pi}_t(a \mid h_{ti}) = \frac{\hat{\rho}(a \mid h_{ti})}{\sum_{a \in s_t}\hat{\rho}(a \mid h_{ti})} = \frac{exp( \widehat{\triangle}_{ti}(a)log(b))}{ \sum_{a' \in S_t}exp(\widehat{\triangle}_{ti}(a')log(b))}$
+* where $\widehat{\triangle}_{ti}(a) = \big\{Q_t(h_t,a_t; \theta_t) - Q_t(h_t,\hat{a}^W_t; \theta_t)\big\} / \hat{\sigma}_t$ and $\hat{a}^W_t$ is the estimated worst action given $h_{ti}$
+* $dim(\theta)$ denotes the dimension of the vector $\theta$ and pre-specified base b ≥ 1 represents how "greedy" the AR scheme is.
+
+*The full meaning of the following quote from the manuscript is unclear to me...*
+
+> Heuristically, we may view Δˆti(a) as an empirical version of the effect size Δti(a) = {Qt(hti, a) − Qt(hti, aw)}/σt between a and aw, where σt is the standard deviation of the (pseudo-)outcome and aw is the worst action based on the true Q-function; hence πˆt is expected to be close to (2) with Δˆti(a) replaced by Δti(a). For example, when there are two possible actions St = {a, aw}, under a moderate effect size Δti(a) = 0.5 per Cohen (1988), the empirical πˆt(a|hti) approximates b‾√/(1+b‾√), which equals 0.59 when b = 2, and 0.91 when b = 100. In this example, setting b from 2 to 100 seems to span a reasonably wide range of “greediness” for a moderate effect size.
+
+The authors also integrate historical context by using a weighted average of $\pi_t^0$ and $\hat{\pi}_t$ using hyperparameter $\lambda \in [0,1]$ which decreases as $n(i)$ grows. Thus, the historical $\pi_t^0$ influences the randomization probabilities even after AR is in effect, although its contribution goes to zero as $n(i)$ increases when b > 1.
+
+* $\tilde{\rho}_t = exp((\lambda^{b-1})log(\pi_t^0) + (1- \lambda^{b-1})log(\hat{\pi}_t))$
+* $\lambda_n = \tau^{1/(b-1)}N_{min}/n$
+
+```{r}
+# Patient outcomes and arrival times
+eps = rnorm(n,0,sigma)  # sample size n <- 100
+arrival = c(0, cumsum(rexp(n-1,rate=accrate)))  # accrate (number of patients/month) = 4
+# Intermediate response rate for A1
+p0 = 29/56
+p1 = 28/52
+```
+
+The intermediate responses $R(i)$ were generated as Bernoulli with $Pr(R = 1 | A_1 = 0) = 0.52$ and $Pr(R = 1 | A_1 = 1) = 0.54$ based on the results in CODIACS. In each simulated trial, inter-enrollment times were simulated according to a Poisson process with a rate of four patients per month based on our clinical expectation.
+
+```{r}
+# iterated over n patients
+for (i in 1:n) {
+  indcomp = which(arrival < (arrival[i] - 6))  # True when patient outcome is available (arrival + 6 months trial duration)
+  ncomp = length(indcomp)
+
+  # AR does not begin until there are n1 (= Nmin) complete observations
+  if (ncomp < n1)  {
+    # STAGE 1 of DTR
+    a1[i] = rbinom(1,1,pi1)  # pi1(initial random allocation prob determined from CODIACS) = 0.67
+    if (a1[i]==0)  R[i] = rbinom(1,1,p0)  # p0 (prob of improvement with PST at baseline from CODIACS) = 29/56
+    else R[i] = rbinom(1,1,p1)  # p1 (prob of improvement without PST from CODIACS) = 28/52
+
+    # STAGE 2 of DTR
+    if (a1[i]==0 & R[i]==0) a2[i] = rbinom(1,1,pi2[1])
+    else if (a1[i]==0 & R[i]==1) a2[i] = rbinom(1,1,pi2[2])
+    else if (a1[i]==1 & R[i]==0) a2[i] = rbinom(1,1,pi2[3])
+    else a2[i] = rbinom(1,1,pi2[4])
+  }
+  # AR begins n(i) > Nmin
+  else {
+    y = Q2sat(a1,R,a2) + eps
+    ycomp = y[indcomp]
+    a1comp = a1[indcomp]
+    a2comp = a2[indcomp]
+    Rcomp = R[indcomp]
+
+    # regression model to calculate pi
+    foo = cbind(a1comp,Rcomp,a2comp,ycomp)
+    pfoo = getRandProb(foo,base=base)
+    pi1hat = pi11hat = pfoo$PI1[2]
+    pi10hat = pfoo$PI1[1]
+
+    # weighted average for historical context integration
+    w0 = (tau/ncomp)^{base-1}  # define lambda
+    w1 = 1-w0
+    rho10 = exp(w0*log(pi10) + w1*log(pi10hat))
+    rho11 = exp(w0*log(pi11) + w1*log(pi11hat))
+    pi1til = rho11  / (rho10 + rho11)  # stage 1
+    pi20hat = pfoo$PI2[,3]
+    pi2hat = pi21hat = pfoo$PI2[,4]
+    rho20 = exp(w0*log(pi20) + w1*log(pi20hat))
+    rho21 = exp(w0*log(pi21) + w1*log(pi21hat))
+    pi2til = rho21 / (rho20+rho21)  # stage 2
+
+    # STAGE 1 of DTR
+    a1[i] = rbinom(1,1,pi1til)
+    if (a1[i]==1)  R[i] = rbinom(1,1,p1)
+    else R[i] = rbinom(1,1,p0)
+
+    # STAGE 2 of DTR
+    if (a1[i]==0 & R[i]==0) a2[i] = rbinom(1,1,pi2til[1])
+    else if (a1[i]==0 & R[i]==1) a2[i] = rbinom(1,1,pi2til[2])
+    else if (a1[i]==1 & R[i]==0) a2[i] = rbinom(1,1,pi2til[3])
+    else a2[i] = rbinom(1,1,pi2til[4])
+  }
+}
+```
+
+#### Design Parameters
+The hyperparameters used for tuning the defined SMART-AR approach are:
+
+* $b$ : indicates how "greedy" the AR scheme is. Non-adaptive SMART when $b = 1$, and larger $b > 1$ are more aggressive.
+* $N_{min}$ : indicating how early the AR scheme begins. Set to be $> 3 \times max_t(dim(\theta_t))$ based on experience.
+* $\lambda$ : defined as $\lambda_n = \tau^{1/(b-1)}N_{min}/n$ where a larger $\tau$ leads to more attenuation.
+
+### Application: Depression Treatment Programme
+
+#### Analysis of historical data: specification of $\pi_t^0$
+The authors set up the initial randomization probabilities $\pi_0^t$ in the SMART-AR using the data of CODIACS, in which information about $(Ati, Ri, Yi)$ is available in 108 subjects with 56 receiving no PST and 52 receiving PST at baseline. The actions are defined as $a_{ti} = 0$ for [medication] and $a_{ti} = 1$ for [PST] Let $R_i$ denote successful treatment outcome (i.e. decreased severity on depression questionnaire) at intermediate evaluation. *Only 71 patients tested positive from the screening in intervention group 1 (screen, notify, treat). Therefore the data must include those that were allocated to group 2 (screen, notify) but received treatment based on the primary clinician's discretion.*
+
+* $Q_2(h_{2i},a_{2i}; \theta_2) = \beta_0 + \beta_1a_{1i} + \beta_2a_{2i} + \beta_3a_{1i}a_{2i} + \gamma_1r_i + \gamma_2r_i(1-a_{1i})a_{2i} + \gamma_3r_ia_{1i}(1-a_{2i})$
+
+The Q-function $Q_2(h_{2i},a_{2i}; \theta_2)$ is parameterized so that a negative value of $\gamma_2$ and $\gamma_3$ will support play-the-winner respectively for medication and PST as initial treatment. The $(1-a_i)$ forces $a_1 = a_2$ to maximize the Q-value when $\gamma < 0$. This is used for comparing various design strategies in the next section. $Q_1$ is fitted with a simple linear modelling with the pseudo-outcome defined by $Q_2(max)$.
+
+* $Q_1(h_{1i}, a_{1i}; \theta_1) = \alpha_0 + \alpha_1a_{1i}$
+
+```{r}
+# Apply Q-learning to the data for STAGE 2
+Q2 = function(a1,resp,a2,b0,b1,b2,b3,g1,g2,g3) {  # resp = binary variable, intermediate outcome to a1
+  b0 + b1*a1 + b2*a2 + b3*a1*a2 + g1*resp + g2*resp*(1-a1)*a2 + g3*resp*a1*(1-a2)
+}
+```
+
+#### Summary of Q-learning of the CODIACS data
+
+The probabilities $\hat{\pi}^{CODIACS}_t$ are calculated with b = 2, and are used as historical randomization probabilities $\pi_t^0$ in the SMART-AR for the depression treatment program. Mean squared errors due to $\hat{\theta}_t$ are $\hat{\sigma}^2_1 = 24.6$ and $\hat{\sigma}^2_2 = 45.2$.
+
+```{r echo=FALSE, out.width = "50%", fig.align="center"}
+img1_path <- "figures/Q-learning_summary.png"
+include_graphics(img1_path)
+```
+
+In other words, the optimal sequence is non-dynamic in that it starts with PST and switches to medication regardless of the intermediate response. It is instructive to also look at the results for patients starting with medication $(a1i = 0)$: the optimal follow-up decision in stage 2 will be switching to PST for patients who do not respond $(ri = 0)$ and staying on medication for those who do $(ri = 1)$. This analysis supports playing the winner for medication as the initial treatment.
+
+The authors also perform analysis with a saturated Q-function defined as below to test the robustness of the analysis. Note the ordering of coefficients for $\gamma_2r_ia_{2i}$ and $\gamma_3r_ia_{1i}$, and that it reduces to $Q_2$ defined above when $\gamma_4 = -(\gamma_2 + \gamma_3)$.
+
+* $Q_2^{Sat}(h_{2i},a_{2i}; \theta_2) = \beta_0 + \beta_1a_{1i} + \beta_2a_{2i} + \beta_3a_{1i}a_{2i} + \gamma_1r_i + \gamma_2r_ia_{2i} + \gamma_3r_ia_{1i} + \gamma_4r_ia_{1i}a_{2i}$
+
+Applying Q-learning with $Q_2^{Sat}$ resulted in the same optimal sequence (d1 = 1, d2 = 0) as that with $Q_2^{Sat}$; this was equivalent to choosing the strategy with maximum marginal means. Also, the Q-functions are estimated with very similar values with $\hat{Q}_1(0) = 10.7$ and $\hat{Q}_1(1) = 15.4$. It indicates that the parameterization of $Q_2$ is adequate, while slightly more parsimonious than $Q_2^{Sat}$.
+
+```{r}
+# Q-learning for STAGE 2 under saturated conditions
+Q2sat = function(a1,resp,a2, theta0) {
+  dim(theta0) = c(8,1)
+  x = cbind(1, a1, a2, resp, a1*a2, a1*resp, a2*resp, a1*a2*resp)
+  return( x %*% theta0)
+}
+
+# All possible DTRs and their values under saturated Q-learning equation, V0 defined in sim.R
+print(V0,digits=3)
+```
+
+
+#### Design callibration
+The authors defined "average performance" as follows to evaluate the performance under various hyperparameter settings.
+
+* $AV(\hat{d}) = \frac{V(\hat{d}) - V(d^W)}{V(d^*) - V(d^W)}$
+* $APO_{100} = \frac{\bar{Y}_{100} - V(d^W)}{V(d^*) - V(d^W)}$, where $\bar{Y}_{100}$ is mean treatment outcome (i.e. BDI score reduction) of the first 100 patients.
+
+Specifically, the outcomes Y in the simulations were generated as normal with mean specified according to the saturated model and variance 45; and the parameter values of Scenarios 1–4 in Table 2 were used in the calibration scenarios; these values were chosen so that the non-saturated analysis model was correct. The least squares $\gamma_2 = −13 (P = 0.03)$ is in line with the expectation that a patient showing response to initial medication should continue with the medication. On the other hand, the least squares $\gamma_3 = 6.5$ with $P = 0.27$ is ambivalent about whether playing the winner is optimal for PST.
+
+$E\big\{AV(\hat{d})\big\}$ and $var\big\{AV(\hat{d})\big\}$ was calculated based on 1000 simulation replicates for 6 different scenarios, where the $\hat{Q}_t$ parameters were fitted as seen in the table below. The optimal parameters were found to be $b = 10$, $N_{min} = 30$, and $\tau = 0.75$.
+
+```{r echo=FALSE, out.width = "50%", fig.align="center"}
+img1_path <- "figures/Hyperparameter_fitting_scenarios.png"
+include_graphics(img1_path)
+```
+
+
+### Design Comparison
+Simulations were performed to compare the following designs:
+
+* SMART-AR(opt): optimal allocation strategy with $b = 10$, $N_{min} = 30$, and $\tau = 0.75$
+* SMART-AR(1): non-adaptive strategy based on CODIACS initial probability with $b = 1, \hat{\pi} = \pi^0$
+* SMART-B: non-adaptive strategy with equal allocation $\pi_t = 1/J_t$
+* SMART-PTW: non-adaptive  strategy with play-the-winner, where patients responding to A1 will continue on A2 = A1
+* sMART-PTW(m): play-the-winner for medication only, and $\pi_t = 1/J_t$ otherwise.
+
+$~$
+```{r echo=FALSE, out.width = "80%", fig.align="center"}
+img1_path <- "figures/Results_1.png"
+include_graphics(img1_path)
+```
+
+**Figure 2:** Program performance (average BDI reduction) of SMART-AR under various accrual rates. The SMART-AR(opt) is applied with b = 10, Nmin = 30, and τ = 0.75. The non-adaptive SMART-AR(1) is indicated by ‘o’, SMART-B by ‘+’, SMART-PTW by ‘p’, and SMART-PTW(m) by ‘m’. The dark solid line on top of each figure corresponds to the performance of the true optimal non-randomized DTR $d^*$.
+
+Author comments on result:
+
+(1) Generally, the expected patient outcome improves over time under SMART-AR(opt) in all scenarios, but remains constant throughout a non-adaptive SMART. Since faster patient accrual implies more patients will be enrolled before adaptation comes into effect, it leads to delayed improvement of SMART-AR(opt).
+
+(2) The true parameter values are chosen based on regression analysis using the CODIACS data. Therefore, SMART-AR(1), which operates under a fitted $\pi^0_t$ is expected to perform well when compared to other non-adaptive SMART designs.
+
+(3) In Scenarios 3 and 4 (where by design the optimal DTR is a play-the-winner strategy), play-the-winner tends to produce better BDI reduction than the other non-adaptive programs. However, SMART-AR(opt) is able to compensate the initial deficit and surpasses SMART-PTW by the 100th enrollees even under an accrual rate that doubles our original expectation.
+
+(4) To further examine using balanced randomization as an initial randomization scheme in a SMART-AR, we ran simulation of SMART-AR(opt) using the initial randomization probabilities $\pi^0_t = 1/J_t$. Figure 3 shows that AR is able to correct for a poor choice of the initial probabilities.
+
+
+$~$
+```{r echo=FALSE, out.width = "80%", fig.align="center"}
+img1_path <- "figures/Results_2.png"
+include_graphics(img1_path)
+```
+
+**Figure 3:** Program performance (average BDI reduction) of SMART-AR with different initial randomization probabilities. The SMART-AR is applied with b = 10, Nmin = 30, and τ = 0.75 under an accrual rate 4 per month. The non-adaptive SMART-AR1 is indicated by ‘o’, SMART-B by ‘+’, SMART-PTW by ‘p’, and SMART-PTWm by ‘m’. The dark solid line on top of each figure corresponds to the performance of the true optimal non-randomized DTR d*.
+
+```{r echo=FALSE, out.width = "50%", fig.align="center"}
+img1_path <- "figures/Results_3.png"
+include_graphics(img1_path)
+```
+**Figure 4:** Properties of dˆ under SMART-B, SMART-AR1, and SMART-ARopt using analysis models (4) and (5) under different patient accrual rates.
+
+$~$
+
+(5) Under SMART-PTW(m), the parameter $\gamma_2$ is not estimable because $R(1 − A_1)A_2$ is completely confounded by the main effects A1, R, and A2; thus, there is no Q-learning results for this design (and SMART-PT(W) for the same reason).
+
+(6) SMART-AR(opt), SMART-AR(1), and SMART-B have similar accuracy in terms of the probability of $\hat{d}$ correctly estimating $d^*$ and the adjusted value $E\{AV(\hat{d})\}$. On the other hand, SMART-AR(opt) yields more efficient estimator $\hat{d}$ with smaller variability in its value than SMART-B. At first glance, it may not appear to be feasible, because balanced randomization maximizes comparative power between two treatment sequences. However, since our goal is not to compare all possible sequences, but rather identify the optimal one among the good ones, AR allocates resources to the promising sequences thus maximizing the resolution of the relevant comparisons. This simulation shows that by incorporating AR to SMART, it does not only allow learning, but also improves learning upon the non-adaptive designs.
+
+(7) Figure 4(b) shows the Q-learning results using the saturated model (5), which in effect is nonparametric. In most scenarios, using model (4) yields smaller var{AV(dˆ)} than (5), even at times when (4) is incorrect; cf. Scenario 5. In Scenario 6, the nonparametric analysis is advantageous in terms of the probability of correctly estimating d*. Its advantage is less pronounced in terms of E{AV(dˆ)}, as Q-learning using model (4) often leads to selecting the second best DTR, which is not far worse than d*.
+
+### Discussion
+
+(1) Design enrichment needs to be coupled with a larger model for the Q-function. Generally, with C response categories in a two-stage DTR, $dim(θ_2)$ is of the order $J_1 × C × J_2$: the actual number of parameters depends on how many interaction terms are postulated, while it is important to include interactions in the search of optimal DTR. Therefore, when a program starts and data are few, it is necessary to consider “simple” designs. As enrollment grows, one can enrich the design to account for more information by incorporating interaction effects with patient covariates, refining and increasing treatment options such as different classes of medications, redefining the intermediate response, and adopting more than two stages of treatments. The proposed AR scheme accommodates such enrichment to the extent that Q-learning is feasible given the sample size.
+
+(2) We have demonstrated in our simulation study that the use of AR improves the performance and robustness of Q-learning by allocating patients away from treatment sequences that are not promising. Similar observations have been noted for adaptive procedures for selection among multiple non-dynamic treatments (e.g. Cheung, 2008). In the context of DTRs, due to the curse of dimensionality, this advantage offered by AR is potentially enormous.
+
+(3) Since the weighted average combines the historical and the empirical inputs on the probability scale, it can be easily applied with other empirical randomization scheme. For example, the empirical component may be replaced with an ∈-optimal criterion as in Lee et al. (2014), who adopt a Bayesian approach and estimate the Q-function using full likelihood.
+
+(4) A SMART-AR converges to a non-adaptive SMART, as more patients are enrolled before adaptation begins. The non-adaptive SMART can thus be used to provide a lower bound of performance for SMART-AR. This underlines the crucial role of historical input $\pi^0_t$. This point should be read in light of the nature of implementation research, in which the SMART-AR is used as a dissemination tool to deploy existing treatments to a community.
+
+
+### Reference
+Cheung, Ying Kuen, Bibhas Chakraborty, and Karina W. Davidson. "Sequential multiple assignment randomized trial (SMART) with adaptive randomization for quality improvement in depression treatment program." Biometrics 71.2 (2015): 450-459.
+
+Kronish, Ian M., et al. "Effect of depression screening after acute coronary syndromes on quality of life: the CODIACS-QoL randomized clinical trial." JAMA Internal Medicine 180.1 (2020): 45-53.
+
+Raghu, Aniruddh, et al. "Deep reinforcement learning for sepsis treatment." arXiv preprint arXiv:1711.09602 (2017).
+
+Hernán, Miguel A., and James M. Robins. "Using big data to emulate a target trial when a randomized trial is not available." American journal of epidemiology 183.8 (2016): 758-764.

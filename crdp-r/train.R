@@ -18,8 +18,8 @@ bayes_prior_a1 <- c(1,1,1,1)  # prior used for crdp value function
 bayes_prior_a2 <- c(1,1,1,1)
 
 # Simulation parameters
-N_SIM <- 10000  # number of simulation repeats
-N_PATIENTS <- 75
+N_SIM <- 100  # number of simulation repeats
+N_PATIENTS <- 10
 
 # True distribution parameters
 response_prob_a1_a <- 0.7

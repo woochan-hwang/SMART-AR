@@ -112,7 +112,3 @@ PrintHyperParameters <- function(returnList) {
   print(head(listOfParameters, 1))
   if (returnList) {return (listOfParameters)}
 }
-
-SaveExperimentOutcome <- funciton(parameterList, overwrite=FALSE) {
-
-}
