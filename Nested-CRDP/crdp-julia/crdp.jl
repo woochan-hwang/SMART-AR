@@ -6,24 +6,23 @@ const BB_numerical_precision_32 = 1.0e-4
 # COMMON FUNCTIONS -------------------------
 # Converts a 4D state to linear index
 function DP_2_lin_index( number_of_allocations , number_of_successes_arm_1 , number_of_failures_arm_1 , number_of_successes_arm_2 , number_of_remaining_allocations )
-# number_of_successes_arm_1 , number_of_failures_arm_1 , number_of_successes_arm_2 \ge 0
-# number_of_allocations , number_of_remaining_allocations \ge 1
-# number_of_successes_arm_1 + number_of_failures_arm_1 + number_of_successes_arm_2 + number_of_remaining_allocations \le number_of_allocations
+# Linear index equal to value_to_go_index used in policy loop when remaining_allocations = 1
 
     return div( number_of_allocations * ( number_of_allocations + 1 ) * ( number_of_allocations + 2 ) * ( number_of_allocations + 3 ) - ( number_of_allocations - number_of_remaining_allocations + 1 ) * ( number_of_allocations - number_of_remaining_allocations + 2 ) * ( number_of_allocations - number_of_remaining_allocations + 3 ) * ( number_of_allocations - number_of_remaining_allocations + 4 ) , 24 ) + div( ( number_of_allocations - number_of_remaining_allocations + 1 ) * ( number_of_allocations - number_of_remaining_allocations + 2 ) * ( number_of_allocations - number_of_remaining_allocations + 3 ) - ( number_of_allocations - number_of_remaining_allocations - number_of_successes_arm_2 + 1 ) * ( number_of_allocations - number_of_remaining_allocations - number_of_successes_arm_2 + 2 ) * ( number_of_allocations - number_of_remaining_allocations - number_of_successes_arm_2 + 3 ) , 6 ) + div( ( number_of_allocations - number_of_remaining_allocations - number_of_successes_arm_2 + 1 ) * ( number_of_allocations - number_of_remaining_allocations - number_of_successes_arm_2 + 2 ) - ( number_of_allocations - number_of_remaining_allocations - number_of_successes_arm_2 - number_of_failures_arm_1 + 1 ) * ( number_of_allocations - number_of_remaining_allocations - number_of_successes_arm_2 - number_of_failures_arm_1 + 2 ) , 2 ) + number_of_successes_arm_1 + 1
 
 end
 
+
 # Converts hex encoded action sets of 4 to human readable format
 function DP_policy_decoder( policy_bin :: Array{ UInt8 , 1 } )
 # Each action can be recovered by running modulus of 4
-
+# Minus 1 as optimal action encoding is different (action 0 in R == action 1 in Julia)
     decoded_policy = []
     for action_set in policy_bin
         hex = Int16(action_set)
         for i in 1:4
             hex = hex % 4
-            push!(decoded_policy, hex)
+            push!(decoded_policy, hex - 1)
         end
     end
 

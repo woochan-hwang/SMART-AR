@@ -1,14 +1,11 @@
 # Applying constrained randomised dynamic programming to SMART
 # Woochan H. 2020, supervised by Dr David Robertson & Dr Sofia VIllar
-# Includes functions for training and inference for simulations
 
-# NOTES TO SELF
-# All nested CRDPs should have equal degrees of randomisation and constraints given that ethically we should not be
-# experimenting if we believed a certain arm to be definitively inferior to the others.
 
 # Load dependencies ------------------------
 source("crdp.R")
 library(assertthat)
+
 
 # KEY TRAINING FUNCTIONS -----------------------------
 # Enumeration of possible state space for a binary trial given sample size

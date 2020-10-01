@@ -120,12 +120,12 @@ function TrainNestedCRDP(sample_size, a1_prior_vector, a2_prior_vector, randomis
     println("[Running] Backwards induction for step 1...")
     for i in 1 : size(q1_index_matrix)[1]
         r = q2_table[i,:]
-        lin_index = abs(Int64(DP_2_lin_index(sample_size, r[1], r[2], r[3], 0)))
+        lin_index = Int64(DP_2_lin_index(sample_size, r[1], r[2], r[3], 1))
         q1_value_matrix[lin_index] = r[11]
     end
     q2_table = nothing
     q1_optim = @time BackwardsQ1Matrix(sample_size, q1_value_matrix, a1_prior_vector, randomisation)
     println("[Completed] Backwards induction for step 1")
 
-    return Dict("Q1" => q1_optim, "Q2" => q2_action_dict)
+    return Dict("Q1" => q1_optim, "Q2" => q2_action_dict, "Q2_Keys" => keys(q2_action_dict))
 end
