@@ -4,13 +4,9 @@
 
 # LOAD DEPENDENCY ---------------------------
 suppressMessages(library(R.utils))
-source("crdp-r/nested_crdp.R", chdir = TRUE)
+source("nested_crdp.R", chdir = TRUE)
 source("utility_functions.R")
 options(warnings=-1)
-
-
-# SELECT BACKEND FRAMEWORK ------------------
-backend_language <- toupper("JULIA")  # "JULIA" / "R"
 
 
 # HYPERPARAMETERS ---------------------------
@@ -23,8 +19,8 @@ bayes_prior_a1 <- c(1,1,1,1)  # stage 1 prior
 bayes_prior_a2 <- c(1,1,1,1)  # stage 2 prior
 
 # Simulation parameters
-N_SIM <- 1000  # number of simulation repeats
-N_PATIENTS <- 100
+N_SIM <- 100  # number of simulation repeats
+N_PATIENTS <- 10
 
 # True distribution parameters
 response_prob_a1_a <- 0.8
@@ -53,26 +49,12 @@ parameterList <- PrintHyperParameters(returnList=TRUE)
 
 
 # TRAIN OPTIMAL POLICY -------------------------
-if (backend_language == "R"){
-  # return: a list with "Q1" and "Q2", where Q1 <- list("ACTION", "VALUE"); Q2 <- list("N_i_ACTION") for i in range(Q2)
-  optimal_policy <- TrainNestedCRDP(sample_size = N_PATIENTS, a1_prior_vector = bayes_prior_a1, a2_prior_vector = bayes_prior_a2,
-                                    randomisation = degree_of_randomisation, constraint = degree_of_constraint)
-  optimal_q1_policy <- optimal_policy$Q1$ACTION
-  optimal_q2_policy <- optimal_policy$Q2
+# return: a list with "Q1" and "Q2", where Q1 <- list("ACTION", "VALUE"); Q2 <- list("N_i_ACTION") for i in range(Q2)
+optimal_policy <- TrainNestedCRDP(sample_size = N_PATIENTS, a1_prior_vector = bayes_prior_a1, a2_prior_vector = bayes_prior_a2,
+                                  randomisation = degree_of_randomisation, constraint = degree_of_constraint)
+optimal_q1_policy <- optimal_policy$Q1$ACTION
+optimal_q2_policy <- optimal_policy$Q2
 
-} else if (backend_language == "JULIA") {
-  # connects julia implementation of nested CRDP to R environment
-  source("crdp-julia/julia_wrapper.R", chdir = TRUE)
-  # return: a list with "Q1" and "Q2", where Q1 <- list("ACTION", "VALUE"); Q2 <- list("N_i_ACTION") for i in range(Q2)
-  optimal_policy <- juliaEval("TrainNestedCRDP(N_PATIENTS, bayes_prior_a1, bayes_prior_a2, degree_of_randomisation, degree_of_constraint)")
-  cat("[Running] Converting julia object into R \n")
-  ptm <- proc.time()
-  optimal_q1_policy <- juliaGet(optimal_policy$Q1$ACTION)
-  cat("[Completed] Converting Q1 policy into R:", (proc.time() - ptm)[[3]], "s \n")
-  optimal_q2_policy <- LoadJuliaDictFromKeys(optimal_policy$Q2, optimal_policy$Q2_Keys)
-  cat("[Completed] Converting Q2 policy into R:", (proc.time() - ptm)[[3]], "s \n")
-  remove(optimal_policy)
-}
 
 # RUN SIMULATIONS ------------------------------
 set.seed(0202)
@@ -88,7 +70,7 @@ for (sim in 1:N_SIM) {
   # DTR Step 1 Inference
   for (t in 1:N_PATIENTS) {
     n <- N_PATIENTS - t + 1
-    optimal_action <- GetOptimalAction(optimal_q1_policy, n, i, j, k, backend_language, N_PATIENTS)
+    optimal_action <- GetOptimalAction(optimal_q1_policy, n, i, j, k)
     a1[t] <- selected_action <- SelectTreatment(optimal_action, degree_of_randomisation)
     r[t] <- GetInterimResponse(selected_action, response_prob_a1_a, response_prob_a1_b)
     belief_a1 <- UpdateCurrentBelief(c(i,j,k,l), a1[t], r[t])
@@ -111,7 +93,7 @@ for (sim in 1:N_SIM) {
     for (t in 1:group_size) {
       patient_index <- patient_index_list[[group]][t]
       n <- group_size - t + 1
-      optimal_action <- GetOptimalAction(optimal_group_policy, n, i, j, k, backend_language, group_size)
+      optimal_action <- GetOptimalAction(optimal_group_policy, n, i, j, k)
       a2[patient_index] <- selected_action <- SelectTreatment(optimal_action, degree_of_randomisation)
       y[patient_index] <- GetOutcome(a1[patient_index], selected_action, response_prob_a2_aa, response_prob_a2_ab,
                                      response_prob_a2_ba, response_prob_a2_bb)

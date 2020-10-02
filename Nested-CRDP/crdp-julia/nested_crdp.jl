@@ -3,7 +3,6 @@
 
 # LOAD DEPENDENCY ---------------------------
 using Distributions
-include("utility_functions.jl")
 include("crdp.jl")
 
 
@@ -101,7 +100,7 @@ function TrainNestedCRDP(sample_size, a1_prior_vector, a2_prior_vector, randomis
     q2_value_list = [] # q2_list[index] where index == q2 horizon
     println("[Running] Nested CRDP for DTR step 2 ... ")
     # TODO check indexing for q1_max and q1_index_array
-    for horizon in 1 : q1_max + 1
+    for horizon in 1 : q1_max
         print("horizon: ", horizon)
         # TODO change to offline policy bin version and update datastructure for q2_list
         action, value = @time CRDP_policy(horizon, randomisation, constraint, a2_prior_vector)

@@ -11,28 +11,10 @@ DPLinearIndex <- function(N, i, j, k, R) {
   return (( N * ( N + 1 ) * ( N + 2 ) * ( N + 3 ) - ( N - R + 1 ) * ( N - R + 2 ) * ( N - R + 3 ) * ( N - R + 4 )) / 24 + (( N - R + 1 ) * ( N - R + 2 ) * ( N - R + 3 ) - ( N - R - k + 1 ) * ( N - R - k + 2 ) * ( N - R - k + 3 )) / 6 + (( N - R - k + 1 ) * ( N - R - k + 2 ) - ( N - R - k - j + 1 ) * ( N - R - k - j + 2 )) / 2 + i + 1)
 }
 
-# TODO need to improve efficiency
-# Iterate over julia nested dictionary object and load into R named list
-LoadJuliaDictFromKeys <- function(policy_dict, keys_to_load) {
-  key_list <- juliaGet(keys_to_load)
-  optimal_group_policies <- list()
-  for (key in key_list) {
-    optimal_group_policies[[key]] <- juliaGet(policy_dict[[key]])
-  }
-  return (optimal_group_policies)
-}
-
 
 # KEY INFERENCE FUNCTIONS ---------------------------
-GetOptimalAction <- function(optimal_policy, n, i, j, k, backend_version, total_allocations) {
-  # optimal_action <- 0 if "treatment_a"; 1 if "treatment_b"
-  if (backend_version == "JULIA") {
-    # requires JuliaConnectoR package to be loaded in main script
-    optimal_action <- as.integer(optimal_policy[DPLinearIndex(total_allocations,i,j,k,1)])
-  } else if (backend_version == "R") {
-    # policy index starts with 1 when i <- j <- j <- k <- 0
-    optimal_action <- optimal_policy[n, i + 1, j + 1, k + 1]
-  }
+GetOptimalAction <- function(optimal_policy, n, i, j, k) {
+  optimal_action <- optimal_policy[n, i + 1, j + 1, k + 1]
   return (optimal_action)
 }
 
@@ -188,8 +170,7 @@ PrintHyperParameters <- function(returnList) {
   parameterNames <- c("degree_of_randomisation", "degree_of_constraint", "bayes_prior_a1", "bayes_prior_a2",
                       "N_SIM", "N_PATIENTS", "response_prob_a1_a", "response_prob_a1_b", "response_prob_a2_aa",
                       "response_prob_a2_ab", "response_prob_a2_ba", "response_prob_a2_bb", "null_hypothesis",
-                      "alternative", "a1_h", "r_h", "significance_level", "ground_truth", "superior_treatment",
-                      "backend_language")
+                      "alternative", "a1_h", "r_h", "significance_level", "ground_truth", "superior_treatment")
   for (obj in parameterNames) {
     listOfParameters[[obj]] <- get(obj)
   }
