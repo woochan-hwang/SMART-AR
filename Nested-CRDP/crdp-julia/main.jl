@@ -14,15 +14,15 @@ const degree_of_randomisation = 0.9  # DoR: prob of selecting arm with higher ex
 const degree_of_constraint = 0.15  # DoC * N_patients = minimum allocation per DTR arm; DoC <= 0.5
 
 # Prior probability; c(success_arm_a, failure_arm_a, success_arm_b, failure_arm_b)
-const bayes_prior_a1 = [1,1,1,1]  # stage 1 prior
-const bayes_prior_a2 = [1,1,1,1]  # stage 2 prior
+const bayes_prior_a1 = [0,0,0,0]  # stage 1 prior
+const bayes_prior_a2 = [0,0,0,0]  # stage 2 prior
 
 # Simulation parameters
-const N_SIM = 1000  # number of simulation repeats
-const N_PATIENTS = 10
+const N_SIM = 10000  # number of simulation repeats
+const N_PATIENTS = 150
 
 # True distribution parameters
-const response_prob_a1_a = 0.8
+const response_prob_a1_a = 0.9
 const response_prob_a1_b = 0.5
 const response_prob_a2_aa = 0.5  # P( Response == 1 | a1 = a, a2 = a )
 const response_prob_a2_ab = 0.5  # P( Response == 1 | a1 = a, a2 = b )
@@ -52,12 +52,15 @@ optimal_q2_policy = optimal_policy["Q2"]
 Random.seed!(1234)
 pval = Array{Float32}(undef, N_SIM)
 patient_outcome = Array{Float32}(undef, N_SIM)
-println("[Running] ", N_SIM, "simulation iterations for ", N_PATIENTS, " samples")
+println("[Running] ", N_SIM, " simulation iterations for ", N_PATIENTS, " samples")
 
 for sim = 1 : N_SIM
 
     belief_a1 = [0, 0, 0, 0]
-    a1 = r = a2 = y = Array{Float32}(undef, N_PATIENTS)
+    a1 = Array{Float32}(undef, N_PATIENTS)
+    r = Array{Float32}(undef, N_PATIENTS)
+    a2 = Array{Float32}(undef, N_PATIENTS)
+    y = Array{Float32}(undef, N_PATIENTS)
 
     # DTR Step 1 Inference
     for t = 1 : N_PATIENTS

@@ -45,8 +45,6 @@ function CreateMaxQ2Table(sample_size, q1_index_matrix, q2_list)
     mydata[:,4] = sample_size .- (mydata[:,1] + mydata[:,2] + mydata[:,3])
     for column = 1:4, row = 1:n1
         n = max(Int64(mydata[row, column]), 4) # minimum horizon bounded to 4
-        if n > 86
-        end
         mydata[row, column + 4] = q2_list[n][1] # q2 value when horizon is n
     end
 
